@@ -72,7 +72,9 @@ function useProjects(): ProjectRow[] {
  */
 export function NewThreadScreen() {
   const navigation = useNavigation<NavigationProp<ParamListBase>>();
-  const [draft, setDraftState] = useState<Draft>({ projectKey: null, provider: null, model: null, isolated: null, prompt: "", files: [] });
+  // A project's page opens it with its project chosen (`computerId:projectId`).
+  const preset = (useRoute().params as { projectKey?: string } | undefined)?.projectKey ?? null;
+  const [draft, setDraftState] = useState<Draft>({ projectKey: preset, provider: null, model: null, isolated: null, prompt: "", files: [] });
   const value = {
     draft,
     setDraft: (update: (current: Draft) => Draft) => setDraftState(update),
@@ -84,7 +86,7 @@ export function NewThreadScreen() {
   };
   return <DraftContext value={value}>
     {/* the sheet opens on "Escolher projeto"; a project leads to the composer. */}
-    <Sheet.Navigator initialRouteName="NewThreadPick" screenOptions={{ headerTransparent: true, headerShadowVisible: false, headerLargeTitle: false, contentStyle: { backgroundColor: "transparent" } } as never}>
+    <Sheet.Navigator initialRouteName={preset ? "NewThreadMain" : "NewThreadPick"} screenOptions={{ headerTransparent: true, headerShadowVisible: false, headerLargeTitle: false, contentStyle: { backgroundColor: "transparent" } } as never}>
       <Sheet.Screen name="NewThreadPick" component={ProjectPage} initialParams={{ first: true }} />
       <Sheet.Screen name="NewThreadMain" component={MainPage} />
       <Sheet.Screen name="NewThreadProject" component={ProjectPage} />
@@ -94,7 +96,7 @@ export function NewThreadScreen() {
 }
 
 /** The project's own icon (`project_auto_icon`), else a folder. */
-function ProjectIcon(props: { readonly computerId: string; readonly projectId: string; readonly size?: number }) {
+export function ProjectIcon(props: { readonly computerId: string; readonly projectId: string; readonly size?: number }) {
   const [uri, setUri] = useState<string | null>(null);
   useEffect(() => {
     let live = true;

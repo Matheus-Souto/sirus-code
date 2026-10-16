@@ -1,210 +1,186 @@
 import { useNavigation, type NavigationProp, type ParamListBase } from "@react-navigation/native";
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Alert, FlatList, Image, Pressable, View } from "react-native";
+import * as Haptics from "expo-haptics";
+import { useEffect, useMemo, useState } from "react";
+import { Image, Pressable, ScrollView, View } from "react-native";
+import Animated, { FadeIn, FadeOut, LinearTransition, useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
 
-import { translate } from "@sirus/i18n";
-import { rowMenuItems } from "@sirus/lib/phone-home";
-import { relativeTime } from "@sirus/lib/session-board";
-import { canSnooze, phoneSnoozeChoices, snoozeDeadline } from "@sirus/lib/snooze";
-import type { MenuAction } from "@react-native-menu/menu";
-import * as Clipboard from "expo-clipboard";
-
-import { SymbolView } from "../components/AppSymbol";
+import { AgentRequest } from "../components/AgentRequest";
+import { SymbolView, type AppSymbolName } from "../components/AppSymbol";
 import { AppText } from "../components/AppText";
-import { ControlPillMenu } from "../components/ControlPillMenu";
-import { ProviderIcon } from "../components/ProviderIcon";
+import { ListSection } from "../components/ListSection";
+import { ThreadRow } from "../components/ThreadRow";
 import { computerName } from "../data/computers";
-import { isScratch, projectLabel } from "../data/scratch";
-import { selectRows, transcriptKey, useSirus, type RowAction, type SessionRow } from "../data/store";
-import { shortDuration, statusSince, THREAD_STATUS_LABEL, threadStatus } from "../data/thread-status";
-import { withNativeGlassHeaderItem } from "../features/layout/native-glass-header-items";
-import { createNativeMailSearchToolbarItem } from "../features/layout/native-mail-search-toolbar";
+import { isScratch } from "../data/scratch";
+import { useSirus } from "../data/store";
+import { bucketCounts, useConversationRows } from "../data/use-conversations";
 import SIRUS_GLYPH from "../../assets/sirus-glyph.png";
 import { useUniwindTheme } from "../lib/useUniwindTheme";
-import { NativeStackScreenOptions } from "../native/StackHeader";
+import { NativeHeaderToolbar, NativeStackScreenOptions } from "../native/StackHeader";
+import { useMainTabs, type ConversationFilter } from "./main-tabs-context";
+
+const WEEKDAYS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+const MONTHS = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+const HOURS = 12;
+const SPRING = { damping: 18, stiffness: 320, mass: 0.6 };
+
+function greeting(now: Date) {
+  const hour = now.getHours();
+  const part = hour < 5 ? "Boa noite" : hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
+  return { part, date: `${WEEKDAYS[now.getDay()]}, ${now.getDate()} de ${MONTHS[now.getMonth()]}` };
+}
 
 /**
- * Home: every computer's conversations in one list, a glass ellipsis for
- * settings, and the iOS 26 Mail-style bottom toolbar with filter, search and compose.
+ * Início: what needs the person first. Four cards (waiting on you, working, ready, projects)
+ * that open Conversas filtered or Projetos, the day in one sentence with the last hours'
+ * activity, the approvals and questions answerable right here, and the latest conversations.
  */
 export function HomeScreen() {
   const navigation = useNavigation<NavigationProp<ParamListBase>>();
-  const data = useSirus((state) => state.data);
+  const tabs = useMainTabs();
+  const theme = useUniwindTheme();
   const computers = useSirus((state) => state.computers);
   const connection = useSirus((state) => state.connection);
-  const [query, setQuery] = useState("");
-  const [computerFilter, setComputerFilter] = useState<string | null>(null);
-  /** `computerId:projectId`. */
-  const [projectFilter, setProjectFilter] = useState<string | null>(null);
-  const order = useSirus((state) => state.prefs.threadOrder);
-  const rows = useMemo(() => selectRows({ data }, order), [data, order]);
-  const shown = useMemo(() => {
-    const needle = query.trim().toLocaleLowerCase();
-    return rows.filter((row) => (!computerFilter || row.computerId === computerFilter)
-      && (!projectFilter || `${row.computerId}:${row.session.projectId}` === projectFilter)
-      && (!needle || row.session.title.toLocaleLowerCase().includes(needle) || (row.project?.name ?? "").toLocaleLowerCase().includes(needle)));
-  }, [rows, query, computerFilter, projectFilter]);
-  const several = computers.length > 1;
-  const loading = computers.some((computer) => !data[computer.id]) && !rows.length;
-  const offline = computers.filter((computer) => connection[computer.id] === "lost");
+  const data = useSirus((state) => state.data);
+  const rows = useConversationRows();
+  const counts = useMemo(() => bucketCounts(rows), [rows]);
+  const projects = useMemo(() => Object.values(data).reduce((sum, value) => sum + value.projects.filter((project) => !isScratch(project)).length, 0), [data]);
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => { const timer = setInterval(() => setNow(new Date()), 60_000); return () => clearInterval(timer); }, []);
 
-  const theme = useUniwindTheme();
-  const openSettings = useCallback(() => navigation.navigate("SettingsSheet"), [navigation]);
+  const attention = rows.filter((row) => row.bucket === "attention");
+  const requests = attention.flatMap((row) => (row.session.pendingRequests ?? []).map((request) => ({ row, request }))).slice(0, 3);
+  const waitingRows = attention.filter((row) => !row.session.pendingRequests?.length);
+  const recent = rows.filter((row) => row.bucket !== "attention").slice(0, 5);
 
-  // "Thread list options": a computer and a project submenu, the current one checked.
-  const projects = useMemo(() => {
-    const seen = new Map<string, string>();
-    for (const row of rows) if (row.project && (!computerFilter || row.computerId === computerFilter)) seen.set(`${row.computerId}:${row.project.id}`, row.project.name);
-    return [...seen].map(([key, label]) => ({ key, label })).sort((a, b) => a.label.localeCompare(b.label));
-  }, [rows, computerFilter]);
-  const filterMenu = useMemo(() => ({
-    title: "Opções da lista",
-    items: [
-      { type: "submenu" as const, title: "Computador", items: [
-        { type: "action" as const, title: "Todos os computadores", subtitle: "Conversas de todos os computadores", state: computerFilter === null ? "on" as const : "off" as const, onPress: () => setComputerFilter(null) },
-        ...computers.map((computer) => ({ type: "action" as const, title: computerName(computer), state: computerFilter === computer.id ? "on" as const : "off" as const,
-          onPress: () => { setComputerFilter(computer.id); setProjectFilter((current) => current?.startsWith(`${computer.id}:`) ? current : null); } })),
-      ] },
-      ...(projects.length ? [{ type: "submenu" as const, title: "Projeto", items: [
-        { type: "action" as const, title: "Todos os projetos", subtitle: "Conversas de todos os projetos", state: projectFilter === null ? "on" as const : "off" as const, onPress: () => setProjectFilter(null) },
-        ...projects.map((project) => ({ type: "action" as const, title: project.label, state: projectFilter === project.key ? "on" as const : "off" as const, onPress: () => setProjectFilter(project.key) })),
-      ] }] : []),
-    ],
-  }), [computers, computerFilter, projects, projectFilter]);
+  // Today in one sentence, and how many conversations moved in each of the last hours.
+  const today = rows.filter((row) => new Date(row.session.lastActivityAt).toDateString() === now.toDateString());
+  const todayProjects = new Set(today.map((row) => `${row.computerId}:${row.session.projectId}`)).size;
+  const bars = useMemo(() => {
+    const counts = Array.from({ length: HOURS }, () => 0);
+    for (const row of rows) {
+      const hoursAgo = Math.floor((now.getTime() - Date.parse(row.session.lastActivityAt)) / 3_600_000);
+      if (hoursAgo >= 0 && hoursAgo < HOURS) counts[HOURS - 1 - hoursAgo]! += 1;
+    }
+    return counts;
+  }, [rows, now]);
+  const peak = Math.max(1, ...bars);
+
+  const online = computers.filter((computer) => connection[computer.id] === "open");
+  const status = !computers.length ? "" : online.length === computers.length
+    ? computers.length === 1 ? `${computerName(computers[0]!)} · conectado` : `${computers.length} computadores conectados`
+    : online.length ? `${online.length} de ${computers.length} computadores conectados` : "Sem conexão com o computador";
+
+  const openFilter = (filter: ConversationFilter) => tabs?.open("conversations", filter);
+  const thread = (computerId: string, sessionId: string) => navigation.navigate("Thread", { computerId, sessionId });
 
   return <>
     <NativeStackScreenOptions
-      optionsVersion={[filterMenu.items, computerFilter, projectFilter, offline.length, theme["--color-foreground"]]}
+      optionsVersion={[theme["--color-foreground"]]}
       options={{
-        title: offline.length ? `${computerName(offline[0])} offline` : "Sirus",
-        // The Sirus mark before the name, in the theme's foreground (white in dark, black in light).
-        headerTitle: offline.length ? undefined : () => <View className="flex-row items-center gap-2">
+        title: "Início",
+        headerSearchBarOptions: undefined,
+        unstable_headerLeftItems: () => [],
+        headerTitle: () => <View className="flex-row items-center gap-2">
           <Image source={SIRUS_GLYPH} style={{ width: 22, height: 22, tintColor: theme["--color-foreground"] }} />
           <AppText className="font-t3-bold text-[18px]">Sirus</AppText>
         </View>,
-        unstable_headerRightItems: () => [
-          withNativeGlassHeaderItem({ accessibilityLabel: "Ajustes", icon: { name: "ellipsis", type: "sfSymbol" } as const, identifier: "home-settings", label: "", onPress: openSettings, type: "button" }),
-        ],
-        headerSearchBarOptions: { autoCapitalize: "none", onCancelButtonPress: () => setQuery("") },
-        unstable_headerToolbarItems: () => [
-          createNativeMailSearchToolbarItem({
-            composeButtonId: "home-new",
-            composeSystemImageName: "square.and.pencil",
-            filterMenu,
-            filterButtonId: "home-filter",
-            filterSystemImageName: computerFilter || projectFilter ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease",
-            onComposePress: () => navigation.navigate("NewThread"),
-            onSearchTextChange: setQuery,
-            placeholder: "Buscar",
-            searchTextChangeId: "home-search-text",
-            showsSearchDismissButton: true,
-          }),
-        ],
       }}
     />
-    <FlatList
-      className="flex-1 bg-screen"
-      contentInsetAdjustmentBehavior="automatic"
-      data={shown}
-      keyExtractor={(row) => `${row.computerId}:${row.session.id}`}
-      ListHeaderComponent={shown.length ? <SectionTitle title="Recentes" count={shown.length} /> : undefined}
-      ListEmptyComponent={loading ? <ActivityIndicator className="mt-16" /> : <AppText className="mt-16 text-center text-sm text-foreground-muted">{query ? "Nada encontrado." : "Nenhuma conversa ainda."}</AppText>}
-      renderItem={({ item }) => <ThreadRow row={item} computerLabel={several ? computerName(computers.find((computer) => computer.id === item.computerId) ?? { hostName: "", kind: "mac" }) : null}
-        onPress={() => navigation.navigate("Thread", { computerId: item.computerId, sessionId: item.session.id })} />}
-      contentContainerStyle={{ paddingBottom: 96 }}
-    />
+    <NativeHeaderToolbar placement="right">
+      <NativeHeaderToolbar.Button accessibilityLabel="Nova conversa" icon="square.and.pencil" onPress={() => navigation.navigate("NewThread")} />
+    </NativeHeaderToolbar>
+    <ScrollView className="flex-1 bg-screen" contentInsetAdjustmentBehavior="automatic" contentContainerClassName="gap-6 px-4 pb-10 pt-2">
+      <View className="gap-1.5 px-1">
+        <AppText className="font-t3-bold text-3xl">{greeting(now).part}</AppText>
+        <AppText className="text-sm text-foreground-muted">{greeting(now).date}</AppText>
+        {status ? <View className="flex-row items-center gap-1.5">
+          <View className={`size-2 rounded-full ${online.length === computers.length ? "bg-adaptive-emerald-600-400" : online.length ? "bg-adaptive-amber-700-400" : "bg-danger-foreground"}`} />
+          <AppText className="text-sm text-foreground-muted">{status}</AppText>
+        </View> : null}
+      </View>
+
+      <View className="gap-2.5">
+        <View className="flex-row gap-2.5">
+          <Tile icon="exclamationmark.shield.fill" tint="#f0a35e" value={counts.attention} label="Precisa de você" onPress={() => openFilter("attention")} highlight={counts.attention > 0} />
+          <Tile icon="circle.dashed" tint="#5ab8ff" value={counts.working} label="Trabalhando" onPress={() => openFilter("working")} />
+        </View>
+        <View className="flex-row gap-2.5">
+          <Tile icon="checkmark.circle.fill" tint="#4cc06c" value={counts.review} label="Prontas hoje" onPress={() => openFilter("review")} />
+          <Tile icon="folder.fill" tint="#a3a8ff" value={projects} label="Projetos" onPress={() => tabs?.open("projects")} />
+        </View>
+      </View>
+
+      <View className="gap-3 rounded-[24px] border-continuous bg-grouped-card px-4 py-3.5">
+        <View className="flex-row items-center justify-between">
+          <AppText className="text-xs font-t3-medium text-foreground-muted">Seu dia</AppText>
+          <AppText className="text-xs text-foreground-tertiary">últimas {HOURS} horas</AppText>
+        </View>
+        <AppText className="text-base leading-6 text-foreground-secondary">
+          {today.length
+            ? <>Hoje você mexeu em <AppText className="font-t3-bold text-foreground">{today.length} {today.length === 1 ? "conversa" : "conversas"}</AppText> em <AppText className="font-t3-bold text-foreground">{todayProjects} {todayProjects === 1 ? "projeto" : "projetos"}</AppText>{counts.working ? <>, e <AppText className="font-t3-bold text-foreground">{counts.working} {counts.working === 1 ? "agente está" : "agentes estão"}</AppText> trabalhando agora</> : null}.</>
+            : "Nenhuma conversa hoje ainda. Toque no lápis para começar."}
+        </AppText>
+        <View className="h-9 flex-row items-end gap-1">
+          {bars.map((count, index) => <View key={index} className={`flex-1 rounded-[3px] ${count ? "bg-adaptive-sky-600-400" : "bg-adaptive-neutral-950-a10-white-a10"}`}
+            style={{ height: count ? 8 + (count / peak) * 28 : 4, opacity: count ? 0.55 + (index / HOURS) * 0.45 : 1 }} />)}
+        </View>
+      </View>
+
+      {attention.length ? <Animated.View layout={LinearTransition.springify().damping(20)} className="gap-2.5">
+        <SectionHeader title="Precisa de você" count={attention.length} action={attention.length > requests.length ? { label: "Ver tudo", onPress: () => openFilter("attention") } : undefined} />
+        {requests.map(({ row, request }) => <Animated.View key={`${row.computerId}:${row.session.id}:${request.requestId}`} entering={FadeIn.duration(220)} exiting={FadeOut.duration(160)} layout={LinearTransition.springify().damping(20)}
+          className="overflow-hidden rounded-[24px] border-continuous bg-grouped-card">
+          <Pressable onPress={() => thread(row.computerId, row.session.id)} className="flex-row items-center gap-2 px-4 pt-3 active:opacity-70">
+            <AppText numberOfLines={1} className="flex-1 font-t3-bold text-sm">{row.session.title || "Nova conversa"}</AppText>
+            <AppText numberOfLines={1} className="max-w-[40%] text-xs text-foreground-muted">{row.project?.name}</AppText>
+            <SymbolView name="chevron.right" size={11} weight="semibold" tintColorClassName="accent-chevron" />
+          </Pressable>
+          <AgentRequest computerId={row.computerId} sessionId={row.session.id} agent={row.session.agent} request={request} />
+        </Animated.View>)}
+        {waitingRows.length && !requests.length ? <ListSection>
+          {waitingRows.slice(0, 3).map((row, index) => <ThreadRow key={row.session.id} row={row} grouped separated={index > 0} computerLabel={null} onPress={() => thread(row.computerId, row.session.id)} />)}
+        </ListSection> : null}
+      </Animated.View> : null}
+
+      {recent.length ? <View className="gap-2.5">
+        <SectionHeader title="Recentes" action={{ label: "Ver todas", onPress: () => openFilter("all") }} />
+        <ListSection>
+          {recent.map((row, index) => <ThreadRow key={`${row.computerId}:${row.session.id}`} row={row} grouped separated={index > 0} computerLabel={null} onPress={() => thread(row.computerId, row.session.id)} />)}
+        </ListSection>
+      </View> : null}
+    </ScrollView>
   </>;
 }
 
-function SectionTitle(props: { readonly title: string; readonly count: number }) {
-  return <View className="flex-row items-center gap-2 px-5 pb-1 pt-3">
-    <AppText className="text-xs text-foreground-muted">{props.title}</AppText>
-    <AppText className="text-xs text-foreground-tertiary">{props.count}</AppText>
-    <View className="ml-2 h-px flex-1 bg-border-subtle" />
+function SectionHeader(props: { readonly title: string; readonly count?: number; readonly action?: { label: string; onPress: () => void } }) {
+  return <View className="flex-row items-center gap-1.5 px-2">
+    <AppText className="text-sm font-t3-medium text-foreground-muted">{props.title}</AppText>
+    {props.count ? <AppText className="text-sm text-foreground-tertiary">{props.count}</AppText> : null}
+    <View className="flex-1" />
+    {props.action ? <Pressable onPress={props.action.onPress} hitSlop={8} className="active:opacity-60">
+      <AppText className="text-sm font-t3-medium text-adaptive-blue-600-400">{props.action.label}</AppText>
+    </Pressable> : null}
   </View>;
 }
 
-const ACTIVE = new Set(["starting", "running", "waiting"]);
-const t = (key: string, params?: Record<string, string | number>) => translate("pt-BR", key, params);
-const failed = (title: string) => (reason: unknown) => Alert.alert(title, reason instanceof Error ? reason.message : String(reason));
-
-/**
- * A conversation row: agent mark, title and time; project, branch and computer
- * below. A long press lifts it into iOS's context menu with the phone web app's actions
- * (`rowMenuItems`): copy the id, archive, snooze, arrange, pin, rename, auto-archive, delete.
- */
-/** A row's status: its icon and label, and how long it has been so (ticking). */
-function StatusLabel(props: { readonly status: keyof typeof THREAD_STATUS_LABEL; readonly since: number | null }) {
-  const label = THREAD_STATUS_LABEL[props.status];
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (props.since === null) return;
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, [props.since]);
-  return <View className="flex-row items-center gap-1">
-    <SymbolView name={label.icon as never} size={13} weight="semibold" tintColorClassName={label.iconTintClassName as never} />
-    <AppText className={`font-t3-bold text-xs ${label.className}`}>{label.label}</AppText>
-    {props.since !== null ? <AppText className={`text-xs tabular-nums ${label.className}`}>{shortDuration(now - props.since)}</AppText> : null}
-  </View>;
-}
-
-const ThreadRow = memo(function ThreadRow(props: { readonly row: SessionRow; readonly computerLabel: string | null; readonly onPress: () => void }) {
-  const { session, project, computerId, pinned } = props.row;
-  const working = ACTIVE.has(session.status);
-  const turn = useSirus((state) => state.turns[transcriptKey(computerId, session.id)]);
-  const status = threadStatus(session, turn, props.row.childRequest);
-  const order = useSirus((state) => state.prefs.threadOrder);
-  const time = relativeTime(session.lastActivityAt);
-  const details = [projectLabel(project), isScratch(project) ? null : session.worktree?.branch, props.computerLabel].filter(Boolean).join(" · ");
-  const items = rowMenuItems({ place: "home", pinned, active: working, autoArchiveDisabled: !!session.autoArchiveDisabled, order });
-  const run = (action: RowAction, title: string) => void useSirus.getState().rowAction(computerId, session.id, action).catch(failed(title));
-  const labels: Record<string, string> = {
-    "copy-id": t("phoneHome.copyId"), archive: t("mobile.archive"), unarchive: t("mobile.unarchive"), return: t("snooze.return"),
-    arrange: t("phoneHome.arrange"), pin: t("mobile.pin"), unpin: t("mobile.unpin"), rename: t("phoneHome.rename"),
-    "auto-archive": t("phoneHome.autoArchive"), delete: t("mobile.delete"),
-  };
-  const symbols: Record<string, string> = {
-    "copy-id": "doc.on.doc", archive: "archivebox", arrange: "arrow.up.arrow.down", pin: "pin", unpin: "pin.slash",
-    rename: "square.and.pencil", "auto-archive": "timer", delete: "trash",
-  };
-  // Order: copy, archive, snooze (each choice with its time), pin, rename, auto-archive, delete.
-  const now = new Date();
-  const actions: MenuAction[] = items.filter((item) => item.id !== "arrange").flatMap((item): MenuAction[] => {
-    const base: MenuAction = { id: item.id, title: labels[item.id] ?? item.id, image: symbols[item.id], attributes: { destructive: item.destructive, disabled: item.disabled } };
-    if (item.id === "auto-archive") {
-      return [{ ...base, subactions: item.submenu?.map((option) => ({ id: `${item.id}:${option.id}`, title: t(`phoneHome.autoArchive.${option.id}`), state: option.checked ? "on" : "off" })) }];
-    }
-    return item.id === "archive" ? [base, {
-      id: "snooze", title: t("snooze.confirm"), image: "clock", attributes: { disabled: !canSnooze(session) },
-      subactions: phoneSnoozeChoices(now).map((choice) => ({ id: `snooze:${choice.at.toISOString()}`, title: t(`snooze.preset.${choice.preset}`), subtitle: snoozeDeadline(choice.at, now, "pt-BR", t) })),
-    }] : [base];
-  });
-  const onAction = (id: string) => {
-    if (id === "copy-id") void Clipboard.setStringAsync(session.id);
-    else if (id === "archive" || id === "pin" || id === "unpin") run({ type: id }, labels[id]!);
-    else if (id.startsWith("snooze:")) run({ type: "snooze", until: id.slice("snooze:".length) }, t("snooze.confirm"));
-    else if (id.startsWith("arrange:")) useSirus.getState().setPrefs({ threadOrder: id.endsWith("created_at") ? "created_at" : "updated_at" });
-    else if (id.startsWith("auto-archive:")) run({ type: "auto-archive", enabled: id.endsWith(":enabled") }, labels["auto-archive"]!);
-    else if (id === "rename") Alert.prompt(t("phoneHome.rename"), undefined, [
-      { text: "Cancelar", style: "cancel" },
-      { text: "Salvar", onPress: (value?: string) => { if (value?.trim() && value.trim() !== session.title) run({ type: "rename", title: value }, labels.rename!); } },
-    ], "plain-text", session.title);
-    else if (id === "delete") Alert.alert(`Excluir "${session.title || "conversa"}"?`, "A conversa some deste computador. Não dá para desfazer.", [
-      { text: "Cancelar", style: "cancel" },
-      ...(session.worktree?.isolated ? [{ text: "Excluir e remover o worktree", style: "destructive" as const, onPress: () => run({ type: "delete", removeWorktree: true }, labels.delete!) }] : []),
-      { text: "Excluir", style: "destructive", onPress: () => run({ type: "delete", removeWorktree: false }, labels.delete!) },
-    ]);
-  };
-  return <ControlPillMenu actions={actions} shouldOpenOnLongPress onPressAction={({ nativeEvent }) => onAction(nativeEvent.event)}>
-    <Pressable onPress={props.onPress} className="bg-screen px-5 py-2.5 active:bg-row-hover">
-      <View className="flex-row items-center gap-2.5">
-        <ProviderIcon provider={session.agent} size={16} />
-        <AppText numberOfLines={1} className="flex-1 font-t3-medium text-base">{session.title || "Nova conversa"}</AppText>
-        {pinned ? <SymbolView name="pin.fill" size={11} tintColorClassName="accent-foreground-tertiary" /> : null}
-        {status ? <StatusLabel status={status} since={statusSince(status, turn)} /> : <AppText className="text-xs text-foreground-tertiary">{time === "now" ? "agora" : time}</AppText>}
+/** A counter card: the number large, its label below; it presses in with a spring and a tick. */
+function Tile(props: { readonly icon: string; readonly tint: string; readonly value: number; readonly label: string; readonly highlight?: boolean; readonly onPress: () => void }) {
+  const scale = useSharedValue(1);
+  const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  return <Animated.View style={[{ flex: 1 }, style]}>
+    <Pressable accessibilityRole="button" accessibilityLabel={`${props.label}: ${props.value}`}
+      onPressIn={() => { scale.value = withSpring(0.96, SPRING); }}
+      onPressOut={() => { scale.value = withSpring(1, SPRING); }}
+      onPress={() => { void Haptics.selectionAsync().catch(() => undefined); props.onPress(); }}
+      className="h-[92px] justify-between rounded-[22px] border-continuous bg-grouped-card px-3.5 py-3"
+      style={props.highlight ? { borderWidth: 1, borderColor: `${props.tint}66`, backgroundColor: `${props.tint}14` } : undefined}>
+      <View className="flex-row items-start justify-between">
+        <View className="size-8 items-center justify-center rounded-full" style={{ backgroundColor: `${props.tint}22` }}>
+          <SymbolView name={props.icon as AppSymbolName} size={16} weight="semibold" tintColor={props.tint} />
+        </View>
+        <AppText className="font-t3-bold text-[26px] leading-[30px] tabular-nums">{props.value}</AppText>
       </View>
-      {details ? <AppText numberOfLines={1} className="ml-[26px] mt-0.5 text-xs text-foreground-muted">{details}</AppText> : null}
+      <AppText numberOfLines={1} className="font-t3-medium text-sm text-foreground-secondary">{props.label}</AppText>
     </Pressable>
-  </ControlPillMenu>;
-});
+  </Animated.View>;
+}

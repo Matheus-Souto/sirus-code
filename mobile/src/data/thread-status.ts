@@ -89,3 +89,19 @@ export function shortDuration(ms: number): string {
   if (minutes < 60) return `${minutes}m`;
   return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
 }
+
+/** Where a conversation falls on Início and in Conversas' filter. */
+export type ConversationBucket = "attention" | "working" | "review";
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * A row's bucket: waiting on the person (an approval or a question), working (or still running
+ * background work), or done in the last day and ready to look at. Older and failed ones have none.
+ */
+export function conversationBucket(status: ThreadStatus | null, lastActivityAt: string, now = Date.now()): ConversationBucket | null {
+  if (status === "approval" || status === "input") return "attention";
+  if (status === "working" || status === "waiting") return "working";
+  if (status === "failed") return null;
+  return now - Date.parse(lastActivityAt) < DAY_MS ? "review" : null;
+}

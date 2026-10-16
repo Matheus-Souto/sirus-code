@@ -11,6 +11,8 @@ export interface ListRowContentProps {
   readonly description?: string;
   readonly detail?: string;
   readonly disabled?: boolean;
+  /** Draws the icon white on a rounded square of this colour, as iOS Settings does. */
+  readonly tint?: string;
 }
 
 /** Shared row geometry; controls own their behavior and accessibility. */
@@ -20,6 +22,7 @@ export function ListRowLayout({
   description,
   detail,
   disabled,
+  tint,
   accessory,
 }: ListRowContentProps & { readonly accessory?: ReactNode }) {
   const { fontScale } = useWindowDimensions();
@@ -33,7 +36,11 @@ export function ListRowLayout({
         disabled && "opacity-45",
       )}
     >
-      {icon ? (
+      {icon && tint ? (
+        <View className="size-[29px] items-center justify-center rounded-[8px] border-continuous" style={{ backgroundColor: tint, experimental_backgroundImage: "linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0) 70%)" }}>
+          <SymbolView name={icon} size={16} tintColor="#ffffff" type="monochrome" weight="medium" />
+        </View>
+      ) : icon ? (
         <View className="size-6 items-center justify-center">
           <SymbolView
             name={icon}

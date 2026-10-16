@@ -9,7 +9,7 @@ Contributor basics live in [`AGENTS.md`](../../AGENTS.md). Decision history live
 | Layer | Choice |
 | --- | --- |
 | Desktop | Tauri 2 (`com.siruscode.app`) |
-| iPhone (native) | React Native / Expo app in `mobile/` (`com.siruscode.phone`) with a native layer of its own; reuses `src/client`, `src/lib` and `src/i18n` through Metro's `@sirus/*` alias; screens in `mobile/src/screens`, all computers in `mobile/src/data/store.ts` (ADR-135) |
+| iPhone (native) | React Native / Expo app in `mobile/` (`com.siruscode.phone`) with a native layer of its own; reuses `src/client`, `src/lib` and `src/i18n` through Metro's `@sirus/*` alias; screens in `mobile/src/screens` under native tabs (`MainTabs.tsx`: Início, Conversas, Projetos, Ajustes), all computers in `mobile/src/data/store.ts` (ADR-135) |
 | UI | React 19, TypeScript strict, Vite 8 |
 | Style | Tailwind CSS v4 (`@tailwindcss/vite`) |
 | Primitives | Radix + vendored UI Arc MIT components through existing primitives |

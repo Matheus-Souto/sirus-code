@@ -1,7 +1,7 @@
 import { useNavigation, useRoute, type NavigationProp, type ParamListBase, type RouteProp } from "@react-navigation/native";
 import * as Application from "expo-application";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, View } from "react-native";
+import { ActivityIndicator, Alert, Image, Linking, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { create } from "zustand";
 
@@ -31,6 +31,8 @@ import { ThemeAppearanceSection } from "../features/settings/appearance/sections
 import { createNativeMailSearchToolbarItem } from "../features/layout/native-mail-search-toolbar";
 import { checkForAppUpdate, runningUpdateLabel } from "../data/app-updates";
 import { ConnectScreen } from "./ConnectScreen";
+import SIRUS_GLYPH from "../../assets/sirus-glyph.png";
+import { useUniwindTheme } from "../lib/useUniwindTheme";
 
 const t = (key: string, params?: Record<string, string | number>) => translate("pt-BR", key, params);
 const icon = (name: string) => name as AppSymbolName;
@@ -44,7 +46,7 @@ const useSettingsComputer = create<{ id: string | null; set: (id: string) => voi
  */
 function Page(props: { readonly title: string; readonly children: ReactNode }) {
   const insets = useSafeAreaInsets();
-  return <View collapsable={false} className="flex-1 bg-sheet">
+  return <View collapsable={false} className="flex-1 bg-screen">
     <NativeStackScreenOptions options={{ title: props.title }} />
     <ScrollView contentInsetAdjustmentBehavior="automatic" showsVerticalScrollIndicator={false} className="flex-1"
       contentContainerClassName="gap-5 px-5 pt-4" contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 18) + 18 }}>
@@ -58,48 +60,65 @@ function Note(props: { readonly children: string }) {
 }
 
 /**
- * Settings (ADR-135), as the phone web app's: an index of sections whose rows
- * open their own page in the sheet.
+ * Ajustes (ADR-135), the fourth tab: the Sirus card (this iPhone, its computers and the app
+ * version) and the phone web app's sections, each row a white symbol on a coloured square as iOS
+ * Settings draws them, opening its page over the tabs.
  */
 export function SettingsScreen() {
   const navigation = useNavigation<NavigationProp<ParamListBase>>();
+  const insets = useSafeAreaInsets();
+  const theme = useUniwindTheme();
   const computers = useSirus((state) => state.computers);
+  const connection = useSirus((state) => state.connection);
   const data = useSirus((state) => state.data);
   const prefs = useSirus((state) => state.prefs);
   const archived = useMemo(() => Object.values(data).reduce((sum, value) => sum + (value.settings?.archivedSessionIds.length ?? 0), 0), [data]);
   const snoozed = useMemo(() => Object.values(data).reduce((sum, value) => sum + value.sessions.filter((session) => !session.sideChat && isSnoozed(session)).length, 0), [data]);
+  const online = computers.filter((computer) => connection[computer.id] === "open").length;
   const go = (screen: string) => () => navigation.navigate(screen);
-  return <Page title={t("mobile.settings")}>
-    <NativeHeaderToolbar placement="right">
-      <NativeHeaderToolbar.Button accessibilityLabel="Fechar" icon="xmark" onPress={() => navigation.getParent()?.goBack()} />
-    </NativeHeaderToolbar>
-    <ListSection title={t("mobile.connections")}>
-      <ListRow icon={icon("desktopcomputer")} label="Computadores" detail={String(computers.length)} onPress={go("SettingsComputers")} />
-      <ListRow icon={icon("bell")} label={t("mobile.alerts")} onPress={go("SettingsAlerts")} />
-      <ListRowLayout icon={icon("iphone")} label={t("mobile.thisDevice")} detail="iPhone · app nativo" />
-    </ListSection>
-    <ListSection title={t("mobile.interface")}>
-      <ListRow icon={icon("paintbrush")} label={t("mobile.appearance")} detail={t(`mobile.scheme.${prefs.colorScheme}`)} onPress={go("SettingsAppearance")} />
-      <ListRow icon={icon("keyboard")} label={t("mobile.keyboard")} onPress={go("SettingsKeyboard")} />
-    </ListSection>
-    <ListSection title={t("mobile.projectsAndConversations")}>
-      <ListRow icon={icon("folder")} label={t("mobile.organization")} onPress={go("SettingsOrganization")} />
-      <ListRow icon={icon("archivebox")} label={t("mobile.archivedConversations")} detail={String(archived)} onPress={go("SettingsArchived")} />
-      <ListRow icon={icon("moon")} label="Conversas adiadas" detail={String(snoozed)} onPress={go("SettingsSnoozed")} />
-    </ListSection>
-    <Note>{t("mobile.settingsHere")}</Note>
-    <ListSection title={t("phoneSettings.macSettings")}>
-      <ListRow icon={icon("plus.bubble")} label={t("phoneSettings.newConversations")} onPress={go("SettingsNewConversations")} />
-      <ListRow icon={icon("text.bubble")} label={t("phoneSettings.conversationBehavior")} onPress={go("SettingsConversationBehavior")} />
-      <ListRow icon={icon("arrow.triangle.branch")} label={t("phoneSettings.sourceControl")} onPress={go("SettingsSourceControl")} />
-      <ListRow icon={icon("sparkles")} label="Comportamento do agente" onPress={go("SettingsAgentBehavior")} />
-      <ListRow icon={icon("wrench.and.screwdriver")} label={t("phoneSettings.maintenance")} onPress={go("SettingsMaintenance")} />
-    </ListSection>
-    <ListSection title={t("mobile.app")}>
-      <ListRow icon={icon("chart.bar.xaxis")} label={t("mobile.usage")} onPress={go("SettingsUsage")} />
-      <ListRow icon={icon("info.circle")} label={t("mobile.about")} onPress={go("SettingsAbout")} />
-    </ListSection>
-  </Page>;
+  return <>
+    <NativeStackScreenOptions options={{ title: t("mobile.settings"), headerTitle: undefined, headerSearchBarOptions: undefined, unstable_headerLeftItems: () => [], unstable_headerRightItems: () => [] }} />
+    <ScrollView contentInsetAdjustmentBehavior="automatic" showsVerticalScrollIndicator={false} className="flex-1 bg-screen"
+      contentContainerClassName="gap-6 px-4 pt-3" contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 18) + 18 }}>
+      <Pressable onPress={go("SettingsAbout")} accessibilityRole="button" accessibilityLabel="Sobre o Sirus Code"
+        className="flex-row items-center gap-3.5 rounded-[24px] border-continuous bg-grouped-card px-4 py-3.5 active:bg-row-hover">
+        <View className="size-[54px] items-center justify-center rounded-[15px] border-continuous bg-foreground">
+          <Image source={SIRUS_GLYPH} style={{ width: 32, height: 32, tintColor: theme["--color-screen"] }} />
+        </View>
+        <View className="min-w-0 flex-1 gap-0.5">
+          <AppText className="font-t3-bold text-xl">Sirus Code</AppText>
+          <AppText numberOfLines={1} className="text-sm text-foreground-muted">
+            {computers.length === 1 ? computerName(computers[0]!) : `${computers.length} computadores`} · {online === computers.length ? "conectado" : online ? `${online} conectado${online > 1 ? "s" : ""}` : "sem conexão"} · {Application.nativeApplicationVersion ?? ""}
+          </AppText>
+        </View>
+        <SymbolView name="chevron.right" size={14} weight="semibold" tintColorClassName="accent-chevron" />
+      </Pressable>
+      <ListSection title={t("mobile.connections")}>
+        <ListRow icon={icon("desktopcomputer")} tint="#4f8cff" label="Computadores" detail={String(computers.length)} onPress={go("SettingsComputers")} />
+        <ListRow icon={icon("bell.badge.fill")} tint="#e5604d" label={t("mobile.alerts")} onPress={go("SettingsAlerts")} />
+      </ListSection>
+      <ListSection title={t("mobile.interface")}>
+        <ListRow icon={icon("paintbrush.fill")} tint="#a16ae8" label={t("mobile.appearance")} detail={t(`mobile.scheme.${prefs.colorScheme}`)} onPress={go("SettingsAppearance")} />
+        <ListRow icon={icon("keyboard.fill")} tint="#8e8e93" label={t("mobile.keyboard")} onPress={go("SettingsKeyboard")} />
+      </ListSection>
+      <ListSection title={t("mobile.projectsAndConversations")}>
+        <ListRow icon={icon("folder.fill")} tint="#45b8ac" label={t("mobile.organization")} onPress={go("SettingsOrganization")} />
+        <ListRow icon={icon("archivebox.fill")} tint="#ee8a3a" label={t("mobile.archivedConversations")} detail={String(archived)} onPress={go("SettingsArchived")} />
+        <ListRow icon={icon("moon.fill")} tint="#5856d6" label="Conversas adiadas" detail={String(snoozed)} onPress={go("SettingsSnoozed")} />
+      </ListSection>
+      <ListSection title={t("phoneSettings.macSettings")} footer={t("mobile.settingsHere")}>
+        <ListRow icon={icon("plus.bubble.fill")} tint="#30a46c" label={t("phoneSettings.newConversations")} onPress={go("SettingsNewConversations")} />
+        <ListRow icon={icon("text.bubble.fill")} tint="#4f8cff" label={t("phoneSettings.conversationBehavior")} onPress={go("SettingsConversationBehavior")} />
+        <ListRow icon={icon("arrow.triangle.branch")} tint="#e0609a" label={t("phoneSettings.sourceControl")} onPress={go("SettingsSourceControl")} />
+        <ListRow icon={icon("sparkles")} tint="#f0a830" label="Comportamento do agente" onPress={go("SettingsAgentBehavior")} />
+        <ListRow icon={icon("wrench.and.screwdriver.fill")} tint="#6e6e78" label={t("phoneSettings.maintenance")} onPress={go("SettingsMaintenance")} />
+      </ListSection>
+      <ListSection title={t("mobile.app")}>
+        <ListRow icon={icon("chart.bar.fill")} tint="#30a46c" label={t("mobile.usage")} onPress={go("SettingsUsage")} />
+        <ListRow icon={icon("info.circle.fill")} tint="#8e8e93" label={t("mobile.about")} onPress={go("SettingsAbout")} />
+      </ListSection>
+    </ScrollView>
+  </>;
 }
 
 export function SettingsComputersScreen() {

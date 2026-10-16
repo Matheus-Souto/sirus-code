@@ -12,17 +12,19 @@ import { checkForAppUpdate } from "./data/app-updates";
 import { pairComputer } from "./data/computers";
 import { AppearancePreferencesProvider } from "./features/settings/appearance/AppearancePreferencesProvider";
 import { useMobileNavigationTheme } from "./lib/useMobileNavigationTheme";
-import { createV5SheetStackNavigator, createV5StackNavigator } from "./native/createV5StackNavigator";
+import { createV5StackNavigator } from "./native/createV5StackNavigator";
 import { NATIVE_LIQUID_GLASS_SUPPORTED } from "./native/native-glass";
 import { nativeHeaderScrollEdgeEffects, type AppNativeStackNavigationOptions } from "./native/StackHeader";
 import { Platform } from "react-native";
 import { ConnectScreen } from "./screens/ConnectScreen";
-import { HomeScreen } from "./screens/HomeScreen";
+import { SearchScreen } from "./screens/ConversationsScreen";
+import { MainTabs } from "./screens/MainTabs";
+import { ProjectScreen } from "./screens/ProjectsScreen";
+import { PullRequestScreen, PullRequestsScreen } from "./screens/PullRequestsScreen";
 import { FileScreen, FilesScreen } from "./screens/FilesScreen";
 import { DiffScreen, GitScreen } from "./screens/GitScreen";
 import { NewThreadScreen } from "./screens/NewThreadScreen";
 import {
-  SettingsScreen,
   SettingsComputersScreen,
   SettingsComputerScreen,
   SettingsAddComputerScreen,
@@ -60,12 +62,6 @@ const GLASS_HEADER: AppNativeStackNavigationOptions = {
   unstable_navigationItemStyle: NATIVE_LIQUID_GLASS_SUPPORTED ? "editor" : undefined,
 };
 
-/** In sheets, the iOS-default centered title (no editor style) and the sheet's own color. */
-const SHEET_HEADER: AppNativeStackNavigationOptions = {
-  ...GLASS_HEADER,
-  unstable_navigationItemStyle: undefined,
-  contentStyle: { backgroundColor: "transparent" },
-};
 /** Form sheets: full height, grabber visible. */
 const FORM_SHEET = { presentation: "formSheet", sheetAllowedDetents: [1], sheetGrabberVisible: true, headerShown: false, gestureEnabled: true } as const;
 
@@ -97,31 +93,6 @@ export default function App() {
   </GestureHandlerRootView>;
 }
 
-const SettingsStack = createV5SheetStackNavigator();
-
-/** Settings: a sheet with its own stack, each row opening its page inside it. */
-function SettingsSheet() {
-  return <SettingsStack.Navigator screenOptions={SHEET_HEADER as never}>
-    <SettingsStack.Screen name="Settings" component={SettingsScreen} />
-    <SettingsStack.Screen name="SettingsComputers" component={SettingsComputersScreen} />
-    <SettingsStack.Screen name="SettingsComputer" component={SettingsComputerScreen} />
-    <SettingsStack.Screen name="SettingsAddComputer" component={SettingsAddComputerScreen} />
-    <SettingsStack.Screen name="SettingsAlerts" component={SettingsAlertsScreen} />
-    <SettingsStack.Screen name="SettingsAppearance" component={SettingsAppearanceScreen} />
-    <SettingsStack.Screen name="SettingsKeyboard" component={SettingsKeyboardScreen} />
-    <SettingsStack.Screen name="SettingsOrganization" component={SettingsOrganizationScreen} />
-    <SettingsStack.Screen name="SettingsArchived" component={SettingsArchivedScreen} />
-    <SettingsStack.Screen name="SettingsSnoozed" component={SettingsSnoozedScreen} />
-    <SettingsStack.Screen name="SettingsNewConversations" component={SettingsNewConversationsScreen} />
-    <SettingsStack.Screen name="SettingsConversationBehavior" component={SettingsConversationBehaviorScreen} />
-    <SettingsStack.Screen name="SettingsSourceControl" component={SettingsSourceControlScreen} />
-    <SettingsStack.Screen name="SettingsAgentBehavior" component={SettingsAgentBehaviorScreen} />
-    <SettingsStack.Screen name="SettingsMaintenance" component={SettingsMaintenanceScreen} />
-    <SettingsStack.Screen name="SettingsUsage" component={SettingsUsageScreen} />
-    <SettingsStack.Screen name="SettingsAbout" component={SettingsAboutScreen} />
-  </SettingsStack.Navigator>;
-}
-
 function Navigation() {
   const theme = useMobileNavigationTheme();
   const ready = useSirus((state) => state.ready);
@@ -130,7 +101,12 @@ function Navigation() {
   return <NavigationContainer theme={theme}>
     <Stack.Navigator screenOptions={GLASS_HEADER as never}>
       {paired ? <>
-        <Stack.Screen name="Home" component={HomeScreen} options={{ title: "Sirus" }} />
+        {/* The main tabs (Início, Conversas, Projetos, Ajustes); everything else opens over them. */}
+        <Stack.Screen name="Home" component={MainTabs} options={{ title: "Sirus" }} />
+        <Stack.Screen name="Search" component={SearchScreen} />
+        <Stack.Screen name="Project" component={ProjectScreen} />
+        <Stack.Screen name="PullRequests" component={PullRequestsScreen} />
+        <Stack.Screen name="PullRequest" component={PullRequestScreen} />
         <Stack.Screen name="Thread" component={ThreadScreen} />
         <Stack.Screen name="NewThread" component={NewThreadScreen} options={FORM_SHEET as never} />
         <Stack.Screen name="Terminal" component={TerminalScreen} />
@@ -139,7 +115,22 @@ function Navigation() {
         <Stack.Screen name="Git" component={GitScreen} />
         <Stack.Screen name="Diff" component={DiffScreen} />
         <Stack.Screen name="ThreadSettings" component={ThreadSettingsScreen} options={FORM_SHEET as never} />
-        <Stack.Screen name="SettingsSheet" component={SettingsSheet} options={FORM_SHEET as never} />
+        <Stack.Screen name="SettingsComputers" component={SettingsComputersScreen} />
+        <Stack.Screen name="SettingsComputer" component={SettingsComputerScreen} />
+        <Stack.Screen name="SettingsAddComputer" component={SettingsAddComputerScreen} />
+        <Stack.Screen name="SettingsAlerts" component={SettingsAlertsScreen} />
+        <Stack.Screen name="SettingsAppearance" component={SettingsAppearanceScreen} />
+        <Stack.Screen name="SettingsKeyboard" component={SettingsKeyboardScreen} />
+        <Stack.Screen name="SettingsOrganization" component={SettingsOrganizationScreen} />
+        <Stack.Screen name="SettingsArchived" component={SettingsArchivedScreen} />
+        <Stack.Screen name="SettingsSnoozed" component={SettingsSnoozedScreen} />
+        <Stack.Screen name="SettingsNewConversations" component={SettingsNewConversationsScreen} />
+        <Stack.Screen name="SettingsConversationBehavior" component={SettingsConversationBehaviorScreen} />
+        <Stack.Screen name="SettingsSourceControl" component={SettingsSourceControlScreen} />
+        <Stack.Screen name="SettingsAgentBehavior" component={SettingsAgentBehaviorScreen} />
+        <Stack.Screen name="SettingsMaintenance" component={SettingsMaintenanceScreen} />
+        <Stack.Screen name="SettingsUsage" component={SettingsUsageScreen} />
+        <Stack.Screen name="SettingsAbout" component={SettingsAboutScreen} />
       </> : <Stack.Screen name="Connect" component={ConnectScreen} options={{ headerShown: false }} />}
     </Stack.Navigator>
   </NavigationContainer>;
