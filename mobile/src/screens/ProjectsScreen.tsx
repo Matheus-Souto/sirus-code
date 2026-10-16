@@ -92,9 +92,9 @@ export function ProjectsScreen() {
           const pulls = prs[prKey(item.computerId)]?.inbox?.items.filter((pr) => open.includes(pr.repository)).length ?? 0;
           return <Pressable key={`${item.computerId}:${item.project.id}`} onPress={() => navigation.navigate("Project", { computerId: item.computerId, projectId: item.project.id })}
             accessibilityRole="button" accessibilityLabel={item.project.name} className="bg-grouped-card active:bg-row-hover">
-            {index > 0 ? <View className="absolute left-[68px] right-0 top-0 bg-separator" style={{ height: StyleSheet.hairlineWidth }} /> : null}
+            {index > 0 ? <View className="absolute left-[58px] right-0 top-0 bg-separator" style={{ height: StyleSheet.hairlineWidth }} /> : null}
             <View className="flex-row items-center gap-3 px-4 py-3">
-              <ProjectTile computerId={item.computerId} project={item.project} size={40} />
+              <ProjectTile computerId={item.computerId} project={item.project} size={30} />
               <View className="min-w-0 flex-1 gap-0.5">
                 <AppText numberOfLines={1} className="font-t3-bold text-base">{item.project.name}</AppText>
                 <View className="flex-row flex-wrap items-center gap-x-2.5 gap-y-0.5">
@@ -157,7 +157,7 @@ export function ProjectScreen() {
     <ScrollView className="flex-1 bg-screen" contentInsetAdjustmentBehavior="automatic" contentContainerClassName="gap-6 px-4 pb-10 pt-2"
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); void refresh(true).finally(() => setRefreshing(false)); }} />}>
       <View className="flex-row items-center gap-3.5 px-1">
-        <ProjectTile computerId={computerId} project={project} size={56} />
+        <ProjectTile computerId={computerId} project={project} size={44} />
         <View className="min-w-0 flex-1 gap-0.5">
           <AppText numberOfLines={1} className="font-t3-bold text-2xl">{project.name}</AppText>
           <AppText numberOfLines={1} className="text-sm text-foreground-muted">{several && computer ? `${computerName(computer)} · ` : ""}{project.path.replace(/^\/(Users|home)\/[^/]+/, "~")}</AppText>
