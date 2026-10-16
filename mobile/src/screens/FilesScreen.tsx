@@ -43,7 +43,7 @@ export function FilesScreen() {
       .sort((a, b) => Number(b.isDir) - Number(a.isDir) || a.name.localeCompare(b.name));
   }, [entries, query]);
 
-  return <View className="flex-1 bg-screen">
+  return <View className="flex-1 bg-thread-canvas">
     <NativeStackScreenOptions options={{
       title: title ?? "Arquivos",
       unstable_headerSubtitle: path ?? undefined,
@@ -83,7 +83,7 @@ export function FileScreen() {
       .then(setFile, (reason: unknown) => setError(errorText(reason)));
   }, [computerId, sessionId, path]);
 
-  return <View className="flex-1 bg-screen">
+  return <View className="flex-1 bg-thread-canvas">
     <NativeStackScreenOptions options={{ title: name, unstable_headerSubtitle: path }} />
     <NativeHeaderToolbar placement="right">
       <NativeHeaderToolbar.Menu accessibilityLabel="Mais" icon="ellipsis">

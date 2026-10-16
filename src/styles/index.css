@@ -322,21 +322,23 @@
   user-select: text;
 }
 
+/* Light: near-white surfaces with cards a clear step darker, hairlines that show, and
+   secondary text dark enough to read (grey on grey made the light theme look washed out). */
 html[data-theme="light"] {
-  --background-0: #f4f4f5;
-  --background-1: #ececee;
-  --background-2: #e4e4e7;
-  --background-3: #d4d4d8;
+  --background-0: #ffffff;
+  --background-1: #fbfbfc;
+  --background-2: #f0f0f3;
+  --background-3: #e4e4e9;
   --background-elevated: #ffffff;
   --border-subtle: rgb(0 0 0 / 0.08);
-  --border-default: rgb(0 0 0 / 0.12);
+  --border-default: rgb(0 0 0 / 0.13);
   --text-primary: #18181b;
-  --text-secondary: #3f3f46;
-  --text-muted: #71717a;
+  --text-secondary: #33333a;
+  --text-muted: #5f5f68;
   --sidebar-rail-icon-active: #000000;
   /* Dark ink reads stronger than light ink: lighter tints in the light palette. */
   --navigation-selected: color-mix(in srgb, var(--text-primary) 7%, transparent);
-  --chat-bubble: color-mix(in srgb, var(--text-primary) 7%, transparent);
+  --chat-bubble: color-mix(in srgb, var(--text-primary) 6%, transparent);
   --accent: #18181b;
   --info: #1f5fd1;
   --merged: #8250df;

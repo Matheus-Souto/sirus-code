@@ -87,7 +87,7 @@ export function ThreadScreen() {
   const requests = session?.pendingRequests ?? [];
   const subtitle = [projectLabel(project), isScratch(project) ? null : session?.worktree?.branch].filter(Boolean).join(" · ");
 
-  return <View className="flex-1 bg-screen">
+  return <View className="flex-1 bg-thread-canvas">
     <NativeStackScreenOptions options={{ title: session?.title || "Conversa", unstable_headerSubtitle: subtitle }} optionsVersion={[session?.title, subtitle]} />
     <NativeHeaderToolbar placement="right">
       <NativeHeaderToolbar.Button accessibilityLabel="Terminal" icon="terminal" onPress={() => navigation.navigate("Terminal", { computerId, sessionId })} />

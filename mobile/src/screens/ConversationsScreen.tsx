@@ -107,7 +107,7 @@ export function ConversationsScreen(props: { readonly mode?: "tab" | "search" })
       <NativeHeaderToolbar.Button accessibilityLabel="Nova conversa" icon="square.and.pencil" onPress={() => navigation.navigate("NewThread")} />
     </NativeHeaderToolbar>}
     <FlatList
-      className="flex-1 bg-screen"
+      className="flex-1 bg-thread-canvas"
       contentInsetAdjustmentBehavior="automatic"
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="on-drag"

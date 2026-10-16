@@ -96,7 +96,7 @@ export const ThreadRow = memo(function ThreadRow(props: { readonly row: SessionR
     ]);
   };
   return <ControlPillMenu actions={actions} shouldOpenOnLongPress onPressAction={({ nativeEvent }) => onAction(nativeEvent.event)}>
-    <Pressable onPress={props.onPress} className={`${props.grouped ? "bg-grouped-card" : "bg-screen"} active:bg-row-hover`}>
+    <Pressable onPress={props.onPress} className={`${props.grouped ? "bg-grouped-card" : "bg-thread-canvas"} active:bg-row-hover`}>
       <View className="flex-row items-center gap-3 py-2.5 pl-4 pr-4">
         <View className="size-7 items-center justify-center">
           <ProviderIcon provider={session.agent} size={20} />

@@ -102,7 +102,7 @@ export function GitScreen() {
   const branch = snapshot?.identity.branch ?? (snapshot?.identity.detached ? "HEAD solto" : "");
   const sync = [snapshot?.ahead ? `${snapshot.ahead}↑` : "", snapshot?.behind ? `${snapshot.behind}↓` : ""].filter(Boolean).join(" ");
 
-  return <View className="flex-1 bg-screen">
+  return <View className="flex-1 bg-thread-canvas">
     <NativeStackScreenOptions options={{ title: "Git", unstable_headerSubtitle: [branch, sync].filter(Boolean).join(" · ") || undefined }} optionsVersion={[branch, sync]} />
     <NativeHeaderToolbar placement="right">
       <NativeHeaderToolbar.Menu accessibilityLabel="Ações do Git" icon="ellipsis">
@@ -157,7 +157,7 @@ export function DiffScreen() {
       .then((result) => setDiff(result.type === "diff" ? result.diff : ""), (reason: unknown) => setError(errorText(reason)));
   }, [computerId, sessionId, path, staged, indexToken]);
   const lines = useMemo(() => (diff ?? "").split("\n").filter((line) => !/^(diff --git|index |--- |\+\+\+ )/.test(line)), [diff]);
-  return <View className="flex-1 bg-screen">
+  return <View className="flex-1 bg-thread-canvas">
     <NativeStackScreenOptions options={{ title: path.split("/").pop() ?? path, unstable_headerSubtitle: path }} />
     {diff === null && !error ? <ActivityIndicator className="mt-24" />
       : error || !lines.some(Boolean) ? <AppText className="mt-16 px-8 text-center text-sm text-foreground-muted">{error ?? "Sem diferenças de texto."}</AppText>
