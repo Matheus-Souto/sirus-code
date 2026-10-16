@@ -11,14 +11,6 @@ import { SegmentedControl } from "@/primitives/SegmentedControl";
 
 type Way = "app" | "browser";
 
-/** QR inks, all dark enough on the white tile for phone cameras. */
-const INKS = [
-  { id: "black", color: "#111111" },
-  { id: "violet", color: "#4b3fd1" },
-  { id: "green", color: "#0b6b4f" },
-  { id: "orange", color: "#b4430f" },
-] as const;
-const INK_KEY = "sirus.pairing.ink";
 const SUGGESTIONS = ["connections.suggest.personal", "connections.suggest.work", "connections.suggest.ipad"] as const;
 
 /**
@@ -46,7 +38,6 @@ export function PairDeviceDialog({ open, onOpenChange, url, joined, clearJoined,
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [ink, setInk] = useState<string>(() => localStorage.getItem(INK_KEY) ?? INKS[0].color);
   const [name, setName] = useState("");
   const asked = useRef(false);
 
@@ -74,7 +65,6 @@ export function PairDeviceDialog({ open, onOpenChange, url, joined, clearJoined,
   const countdown = pairing ? pairingCountdown(pairing.expiresAt, now) : null;
   const view = joined ? "linked" : pairing && !countdown ? "expired" : "live";
   const code = pairing?.code ?? "······";
-  const chooseInk = (color: string) => { setInk(color); localStorage.setItem(INK_KEY, color); };
   const copy = (text: string) => void navigator.clipboard.writeText(text).then(() => { setCopied(true); window.setTimeout(() => setCopied(false), 1500); });
   /** Saves the name typed for the device that joined; false when it could not. */
   const saveName = async () => {
@@ -116,14 +106,10 @@ export function PairDeviceDialog({ open, onOpenChange, url, joined, clearJoined,
           { value: "browser", label: t("connections.way.browser"), content: <span className="pair-way"><Globe size={13} aria-hidden="true" />{t("connections.way.browser")}</span> },
         ]} />
         {way === "app" ? <div className="pair-card pair-card-qr">
-          {pairing ? <PairingQrCode value={pairing.urls[0] ?? ""} label={t("connections.qrLabel")} size={168} ink={ink} /> : <div className="pair-qr-placeholder" aria-hidden="true" />}
+          {pairing ? <PairingQrCode value={pairing.urls[0] ?? ""} label={t("connections.qrLabel")} size={168} /> : <div className="pair-qr-placeholder" aria-hidden="true" />}
           <div className="pair-side">
             <div><small>{t("connections.orType")}</small><p className="pair-code" aria-label={t("connections.codeLabel", { code })}>{code.slice(0, 3)}&thinsp;{code.slice(3)}</p></div>
             <ol className="pair-steps"><li>{t("connections.step.tailscale")}</li><li>{t("connections.step.scan")}</li><li>{t("connections.step.name")}</li></ol>
-            <div className="pair-inks" role="radiogroup" aria-label={t("connections.qrColor")}>
-              {INKS.map((item) => <button key={item.id} type="button" role="radio" aria-checked={ink === item.color} aria-label={t(`connections.ink.${item.id}`)}
-                className="pair-ink" data-on={ink === item.color || undefined} style={{ background: item.color }} onClick={() => chooseInk(item.color)} />)}
-            </div>
           </div>
         </div> : <div className="pair-card">
           <div className="pair-address"><small>{t("connections.address")}</small><code>{url}</code>

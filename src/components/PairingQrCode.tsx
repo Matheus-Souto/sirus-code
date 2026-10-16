@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { encode, QrCodeDataType } from "uqr";
 
-/** Dark modules on a light tile whatever the theme: not every phone camera reads an inverted code. Inks are dark enough to read. */
+/** Dark modules on a light tile whatever the theme: not every phone camera reads an inverted code. */
 const INK = "#111111";
 /** Module dots this wide (of one module); smaller ones stop some readers. */
 const DOT_RADIUS = 0.48;
@@ -30,18 +30,18 @@ function geometry(value: string) {
   return { size, dots, span, finders: [[0, 0], [far, 0], [0, far]] as const };
 }
 
-export function PairingQrCode({ value, label, size = 176, ink = INK }: { value: string; label: string; size?: number; ink?: string }) {
+export function PairingQrCode({ value, label, size = 176 }: { value: string; label: string; size?: number }) {
   const qr = useMemo(() => geometry(value), [value]);
   // The mark sits inside the cleared square with a module of breathing room.
   const mark = ((qr.span - 1.5) / qr.size) * size;
   return <div role="img" aria-label={label} className="pairing-qr">
     <svg aria-hidden="true" viewBox={`0 0 ${qr.size} ${qr.size}`} width={size} height={size}>
-      <path d={qr.dots} fill={ink} />
+      <path d={qr.dots} fill={INK} />
       {qr.finders.map(([x, y]) => <g key={`${x}:${y}`}>
-        <rect x={x + 0.5} y={y + 0.5} width={FINDER - 1} height={FINDER - 1} rx={1.9} fill="none" stroke={ink} strokeWidth={1} />
-        <rect x={x + 2} y={y + 2} width={3} height={3} rx={0.9} fill={ink} />
+        <rect x={x + 0.5} y={y + 0.5} width={FINDER - 1} height={FINDER - 1} rx={1.9} fill="none" stroke={INK} strokeWidth={1} />
+        <rect x={x + 2} y={y + 2} width={3} height={3} rx={0.9} fill={INK} />
       </g>)}
     </svg>
-    <span aria-hidden="true" className="pairing-qr-mark" style={{ width: mark, height: mark, background: ink }}><i /></span>
+    <span aria-hidden="true" className="pairing-qr-mark" style={{ width: mark, height: mark }}><i /></span>
   </div>;
 }
