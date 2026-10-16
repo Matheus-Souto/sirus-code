@@ -188,6 +188,8 @@ function ConnectorDialog({ draft, installed, projects, defaultProjectId, onClose
   const open = draft !== null;
   const entry = draft?.entry ?? null;
   const editing = draft?.connector ?? null;
+  // One id per opened dialog: a retry after a failed sign-in updates the connector it saved, not a second one.
+  const newId = useMemo(() => (draft ? crypto.randomUUID() : ""), [draft]);
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [auth, setAuth] = useState<ConnectorAuth>("oauth");
@@ -231,7 +233,7 @@ function ConnectorDialog({ draft, installed, projects, defaultProjectId, onClose
     setBusy(true);
     setError(null);
     const connector: Connector = {
-      id: editing?.id ?? crypto.randomUUID(),
+      id: editing?.id ?? newId,
       ...(entry ? { catalogId: entry.id } : editing?.catalogId ? { catalogId: editing.catalogId } : {}),
       name: name.trim(),
       url: finalUrl,

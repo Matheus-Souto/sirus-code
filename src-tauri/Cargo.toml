@@ -81,6 +81,8 @@ futures-util = { version = "0.3", default-features = false, features = ["std", "
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2-avf-audio = { version = "0.3.2", default-features = false, features = ["AVAudioEngine", "AVAudioNode", "AVAudioFormat", "AVAudioBuffer", "AVAudioFile", "AVAudioTime", "AVAudioTypes", "AVAudioIONode", "AVAudioApplication", "block2"] }
 objc2 = "0.6.4"
+# Connector sign-ins in the Keychain (already in the tree through TLS).
+security-framework = "3"
 global-hotkey = "0.8"
 objc2-user-notifications = { version = "0.3.2", default-features = false, features = ["std", "block2", "bitflags", "UNUserNotificationCenter", "UNNotification", "UNNotificationContent", "UNNotificationRequest", "UNNotificationTrigger", "UNNotificationResponse", "UNNotificationSettings", "UNNotificationSound"] }
 speech = "0.9"

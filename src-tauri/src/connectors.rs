@@ -179,51 +179,30 @@ struct Tokens {
 
 #[cfg(target_os = "macos")]
 mod vault {
-    //! The macOS Keychain through `security`: the value goes in on stdin (`security -i`), so
-    //! it never shows in the process list.
-    use std::io::Write;
-    use std::process::{Command, Stdio};
+    //! The macOS Keychain through the Security framework: values of any length, never on a
+    //! command line. (The `security` tool's interactive mode cut values past about 4 KB, which
+    //! long OAuth tokens reach, and reported every save as failed.)
+    use security_framework::passwords::{
+        delete_generic_password, get_generic_password, set_generic_password,
+    };
 
     const SERVICE: &str = "Sirus Code connectors";
 
     pub fn get(id: &str) -> Option<String> {
-        let output = Command::new("/usr/bin/security")
-            .args(["find-generic-password", "-s", SERVICE, "-a", id, "-w"])
-            .stderr(Stdio::null())
-            .output()
-            .ok()?;
-        output
-            .status
-            .success()
-            .then(|| String::from_utf8_lossy(&output.stdout).trim().to_string())
+        get_generic_password(SERVICE, id)
+            .ok()
+            .and_then(|bytes| String::from_utf8(bytes).ok())
     }
 
     pub fn put(id: &str, value: &str) -> bool {
-        let Ok(mut child) = Command::new("/usr/bin/security")
-            .arg("-i")
-            .stdin(Stdio::piped())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .spawn()
-        else {
-            return false;
-        };
-        // Ids and values are checked to [A-Za-z0-9-] and base64, so quoting is safe.
-        let line =
-            format!("add-generic-password -U -s \"{SERVICE}\" -a \"{id}\" -w \"{value}\"\nquit\n");
-        let written = child
-            .stdin
-            .take()
-            .is_some_and(|mut stdin| stdin.write_all(line.as_bytes()).is_ok());
-        child.wait().is_ok_and(|status| status.success()) && written
+        // An item the old `security` path left belongs to that tool; replace it rather than fail.
+        set_generic_password(SERVICE, id, value.as_bytes()).is_ok()
+            || (delete_generic_password(SERVICE, id).is_ok()
+                && set_generic_password(SERVICE, id, value.as_bytes()).is_ok())
     }
 
     pub fn delete(id: &str) {
-        let _ = Command::new("/usr/bin/security")
-            .args(["delete-generic-password", "-s", SERVICE, "-a", id])
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status();
+        let _ = delete_generic_password(SERVICE, id);
     }
 }
 
@@ -1013,6 +992,20 @@ pub fn acp_servers(active: &[Active], init: &Value) -> Vec<Value> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Writes to the real Keychain, so it runs only when asked (`--ignored`).
+    #[test]
+    #[ignore]
+    fn keychain_keeps_long_sign_ins_whole() {
+        let id = "sirus-test-long-token";
+        let value = "a".repeat(6000);
+        assert!(vault::put(id, &value));
+        assert_eq!(vault::get(id).as_deref(), Some(value.as_str()));
+        assert!(vault::put(id, "short"));
+        assert_eq!(vault::get(id).as_deref(), Some("short"));
+        vault::delete(id);
+        assert_eq!(vault::get(id), None);
+    }
 
     fn connector(id: &str, name: &str) -> Connector {
         Connector {
