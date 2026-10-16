@@ -116,6 +116,7 @@ export function ConnectorsSettings({ settings, agents, onSave }: { settings: App
                 <span className="truncate">{connector.name}</span>
                 <span className="connector-tag" data-project={connector.projectId ? "" : undefined}>{projectName(connector.projectId) ?? t("connectors.allProjects")}</span>
                 {!connector.enabled ? <span className="connector-tag">{t("connectors.off")}</span> : null}
+                {connector.auth !== "none" && state === "connected" ? <span className="connector-signed-in"><i aria-hidden="true" />{t("connectors.state.connected")}</span> : null}
               </span>
               <span className="connector-desc">{detail}</span>
             </span>

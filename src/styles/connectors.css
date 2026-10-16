@@ -23,6 +23,9 @@
   .connector-name { display: flex; min-width: 0; align-items: center; gap: 6px; color: var(--text-primary); font-size: var(--text-ui-13, 13px); font-weight: 500; }
   .connector-desc { overflow: hidden; color: var(--text-muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
   .connector-tag { flex-shrink: 0; padding: 1px 7px; border-radius: 999px; background: var(--background-3); color: var(--text-secondary); font-size: 10.5px; font-weight: 400; }
+  /* A signed-in connector says so: a green dot and "Signed in". */
+  .connector-signed-in { flex-shrink: 0; display: inline-flex; align-items: center; gap: 5px; padding: 1px 8px 1px 6px; border-radius: 999px; background: color-mix(in srgb, var(--success) 14%, transparent); color: var(--success); font-size: 10.5px; font-weight: 500; }
+  .connector-signed-in i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 6px currentColor; }
   .connector-tag[data-project] { background: color-mix(in srgb, var(--accent, #8c9bff) 16%, transparent); color: color-mix(in srgb, var(--accent, #8c9bff) 70%, var(--text-primary)); }
   .connector-action { flex-shrink: 0; color: var(--text-muted); }
   .connectors-foot { margin-top: 18px; color: var(--text-muted); font-size: 12px; }
