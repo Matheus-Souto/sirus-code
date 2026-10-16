@@ -5,6 +5,7 @@ import { Keyboard, View, type NativeSyntheticEvent } from "react-native";
 import { Tabs, type TabSelectedEvent, type TabSelectionPreventedEvent, type TabSelectionRejectedEvent } from "react-native-screens";
 
 import { bucketCounts, useConversationRows } from "../data/use-conversations";
+import { useUniwindTheme } from "../lib/useUniwindTheme";
 import { NativeWorkspaceTabActivityContext } from "../native/v5-workspace-context";
 import { ConversationsScreen } from "./ConversationsScreen";
 import { HomeScreen } from "./HomeScreen";
@@ -40,6 +41,8 @@ function RetainedTab(props: { readonly active: boolean; readonly isActive: () =>
  */
 export function MainTabs() {
   const navigation = useNavigation<NavigationProp<ParamListBase>>();
+  // The chosen tab is drawn in the text colour (white in dark, black in light), not the system blue.
+  const theme = useUniwindTheme();
   const [selected, setSelected] = useState<MainTab>("home");
   const [filter, setFilter] = useState<ConversationFilter>("all");
   const [provenance, setProvenance] = useState(0);
@@ -61,7 +64,7 @@ export function MainTabs() {
     <View style={{ flex: 1 }}>
       <Tabs.Host
         navStateRequest={request}
-        ios={{ tabBarControllerMode: "tabBar", tabBarMinimizeBehavior: "never" }}
+        ios={{ tabBarControllerMode: "tabBar", tabBarMinimizeBehavior: "never", tabBarTintColor: theme["--color-foreground"] }}
         onTabSelectionPrevented={({ nativeEvent }: NativeSyntheticEvent<TabSelectionPreventedEvent>) => {
           if (nativeEvent.preventedScreenKey !== SEARCH_TAB) return;
           void Haptics.selectionAsync().catch(() => undefined);

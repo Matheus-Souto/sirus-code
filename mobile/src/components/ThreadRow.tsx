@@ -42,7 +42,7 @@ export function StatusLabel(props: { readonly status: keyof typeof THREAD_STATUS
 }
 
 /**
- * A conversation row: the agent's mark in a tinted tile, the title and its time; the state
+ * A conversation row: the agent's mark, the title and its time; the state
  * (approval, question, working, waiting, failed, with how long) and the project, branch and
  * computer below. A long press lifts it into iOS's context menu with the phone web app's actions
  * (`rowMenuItems`): copy the id, archive, snooze, arrange, pin, rename, auto-archive, delete.
@@ -98,8 +98,8 @@ export const ThreadRow = memo(function ThreadRow(props: { readonly row: SessionR
   return <ControlPillMenu actions={actions} shouldOpenOnLongPress onPressAction={({ nativeEvent }) => onAction(nativeEvent.event)}>
     <Pressable onPress={props.onPress} className={`${props.grouped ? "bg-grouped-card" : "bg-screen"} active:bg-row-hover`}>
       <View className="flex-row items-center gap-3 py-2.5 pl-4 pr-4">
-        <View className="size-9 items-center justify-center rounded-[11px] border-continuous bg-adaptive-neutral-950-a5-white-a5">
-          <ProviderIcon provider={session.agent} size={18} />
+        <View className="size-7 items-center justify-center">
+          <ProviderIcon provider={session.agent} size={20} />
         </View>
         <View className="min-w-0 flex-1 gap-0.5">
           <View className="flex-row items-center gap-2">
@@ -113,7 +113,7 @@ export const ThreadRow = memo(function ThreadRow(props: { readonly row: SessionR
           </View>
         </View>
       </View>
-      {props.separated ? <View className="absolute left-[64px] right-0 top-0 bg-separator" style={{ height: StyleSheet.hairlineWidth }} /> : null}
+      {props.separated ? <View className="absolute left-[56px] right-0 top-0 bg-separator" style={{ height: StyleSheet.hairlineWidth }} /> : null}
     </Pressable>
   </ControlPillMenu>;
 });

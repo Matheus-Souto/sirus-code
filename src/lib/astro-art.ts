@@ -184,8 +184,18 @@ export function paintAstroIcon(canvas: HTMLCanvasElement, icon: AstroIconId, sty
   const W = canvas.width;
   c.setTransform(1, 0, 0, 1, 0, 0);
   c.clearRect(0, 0, W, W);
-  const P = palette(style, color);
   c.setTransform(W / 64, 0, 0, W / 64, 0, 0);
+  drawAstroIcon(c, icon, style, color, t);
+}
+
+/**
+ * Draws one icon in the 64×64 space of whatever context it gets: the desktop's canvas, or the
+ * phone's recorder that turns the same drawing into SVG.
+ */
+export function drawAstroIcon(c: Ctx, icon: AstroIconId, style: AstroStyle, color: string, t: number) {
+  const draw = DRAW[icon];
+  if (!draw) return;
+  const P = palette(style, color);
   if (P.neon) { c.shadowColor = color; c.shadowBlur = 14; }
   draw(c, t, P);
   c.shadowBlur = 0;

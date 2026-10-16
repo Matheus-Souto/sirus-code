@@ -5,18 +5,32 @@ const PROJECT_COLORS: Record<string, string> = {
   blue: "#4f8cff", red: "#e5604d", yellow: "#f0c43a", green: "#4cc06c", pink: "#e0609a",
   purple: "#a16ae8", teal: "#45b8ac", orange: "#ee8a3a", gray: "#8e8e93",
 };
-const FALLBACK = ["#4f8cff", "#a16ae8", "#45b8ac", "#ee8a3a", "#e0609a", "#4cc06c", "#e5604d"];
 
-/** A project's tile colour: its own folder colour, else one picked from its name (stable). */
-export function projectTint(project: Pick<Project, "name" | "look"> | undefined): string {
+/** Without a project colour, Astro icons use this tint (the desktop's `ASTRO_DEFAULT_COLOR`). */
+export const ASTRO_DEFAULT_COLOR = "#8c9bff";
+
+/** A project's own colour, if it has one. */
+export function projectColor(project: Pick<Project, "look"> | undefined): string | undefined {
   const own = project?.look?.color;
-  if (own) return PROJECT_COLORS[own] ?? own;
-  let hash = 0;
-  for (const char of project?.name ?? "") hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
-  return FALLBACK[hash % FALLBACK.length]!;
+  return own ? PROJECT_COLORS[own] ?? own : undefined;
 }
 
-/** What the tile shows: the project's emoji, else its first letter. */
-export function projectInitial(project: Pick<Project, "name" | "look"> | undefined): string {
-  return project?.look?.emoji || (project?.name.match(/[\p{L}\p{N}]/u)?.[0]?.toLocaleUpperCase() ?? "?");
-}
+/**
+ * The desktop's line icons (`project_look::ICONS`, Phosphor there) as SF Symbols, the closest
+ * system drawing of each.
+ */
+export const PROJECT_ICON_SYMBOLS: Record<string, string> = {
+  "folder": "folder", "code": "chevron.left.forwardslash.chevron.right", "terminal": "terminal", "book-open": "book",
+  "graduation-cap": "graduationcap", "pencil-simple": "pencil", "feather": "pencil.and.scribble", "briefcase": "briefcase",
+  "music-notes": "music.note", "chart-bar": "chart.bar", "barbell": "dumbbell", "scales": "scalemass",
+  "globe": "globe", "airplane-tilt": "airplane", "wrench": "wrench.adjustable", "paw-print": "pawprint",
+  "flask": "flask", "brain": "brain", "heart": "heart", "tree": "tree", "rocket": "paperplane",
+  "lightbulb": "lightbulb", "star": "star", "coffee": "cup.and.saucer", "camera": "camera",
+  "shopping-cart": "cart", "house": "house", "car": "car", "game-controller": "gamecontroller",
+  "palette": "paintpalette", "database": "cylinder.split.1x2", "cloud": "cloud", "lock": "lock", "key": "key",
+  "currency-dollar": "dollarsign", "bank": "building.columns", "stethoscope": "stethoscope", "chat-circle": "bubble.left",
+  "envelope": "envelope", "device-mobile": "iphone", "calendar-blank": "calendar", "robot": "cpu",
+  "cpu": "cpu", "bug": "ant", "leaf": "leaf", "sun": "sun.max", "moon": "moon", "fire": "flame",
+  "lightning": "bolt", "cube": "cube", "puzzle-piece": "puzzlepiece", "trophy": "trophy", "users": "person.2",
+  "storefront": "storefront", "film-slate": "film", "newspaper": "newspaper", "atom": "atom", "cat": "cat",
+};
