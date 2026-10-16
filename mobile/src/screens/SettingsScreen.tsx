@@ -88,7 +88,7 @@ export function SettingsScreen() {
         <View className="min-w-0 flex-1 gap-0.5">
           <AppText className="font-t3-bold text-xl">Sirus Code</AppText>
           <AppText numberOfLines={1} className="text-sm text-foreground-muted">
-            {computers.length === 1 ? computerName(computers[0]!) : `${computers.length} computadores`} · {online === computers.length ? "conectado" : online ? `${online} conectado${online > 1 ? "s" : ""}` : "sem conexão"} · {Application.nativeApplicationVersion ?? ""}
+            {computers.length === 1 ? computerName(computers[0]!) : `${computers.length} computadores`} · {online === computers.length ? "conectado" : `${online} de ${computers.length} conectado${online === 1 ? "" : "s"}`} · {Application.nativeApplicationVersion ?? ""}
           </AppText>
         </View>
         <SymbolView name="chevron.right" size={14} weight="semibold" tintColorClassName="accent-chevron" />

@@ -65,10 +65,13 @@ export function HomeScreen() {
   }, [rows, now]);
   const peak = Math.max(1, ...bars);
 
+  // Out of reach means the socket gave up ("lost") or the token was refused; connecting is not offline.
   const online = computers.filter((computer) => connection[computer.id] === "open");
-  const status = !computers.length ? "" : online.length === computers.length
-    ? computers.length === 1 ? `${computerName(computers[0]!)} · conectado` : `${computers.length} computadores conectados`
-    : online.length ? `${online.length} de ${computers.length} computadores conectados` : "Sem conexão com o computador";
+  const away = computers.filter((computer) => connection[computer.id] === "lost" || connection[computer.id] === "unauthorized");
+  const status = !computers.length ? ""
+    : away.length ? (away.length === 1 ? `${computerName(away[0]!)} fora do ar` : `${away.length} computadores fora do ar`) + (online.length ? ` · ${online.length} conectado${online.length > 1 ? "s" : ""}` : "")
+    : online.length === computers.length ? computers.length === 1 ? `${computerName(computers[0]!)} · conectado` : `${computers.length} computadores conectados`
+    : "Conectando…";
 
   const openFilter = (filter: ConversationFilter) => tabs?.open("conversations", filter);
   const thread = (computerId: string, sessionId: string) => navigation.navigate("Thread", { computerId, sessionId });
@@ -94,7 +97,7 @@ export function HomeScreen() {
         <AppText className="font-t3-bold text-3xl">{greeting(now).part}</AppText>
         <AppText className="text-sm text-foreground-muted">{greeting(now).date}</AppText>
         {status ? <View className="flex-row items-center gap-1.5">
-          <View className={`size-2 rounded-full ${online.length === computers.length ? "bg-adaptive-emerald-600-400" : online.length ? "bg-adaptive-amber-700-400" : "bg-danger-foreground"}`} />
+          <View className={`size-2 rounded-full ${away.length === computers.length ? "bg-danger-foreground" : away.length || online.length < computers.length ? "bg-adaptive-amber-700-400" : "bg-adaptive-emerald-600-400"}`} />
           <AppText className="text-sm text-foreground-muted">{status}</AppText>
         </View> : null}
       </View>
