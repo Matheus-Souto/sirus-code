@@ -123,7 +123,7 @@ export function ConnectorsSettings({ settings, agents, onSave }: { settings: App
               {t(state === "expired" ? "connectors.signInAgain" : "connectors.signIn")}
             </InteractiveButton> : needsSignIn ? <InteractiveButton variant="secondary" glow={false} onClick={() => setDraft({ connector, entry: entry ?? null })}>{t("connectors.signIn")}</InteractiveButton> : null}
             <Dropdown>
-              <DropdownTrigger asChild><IconButton label={t("connectors.more", { name: connector.name })} className="connector-action"><MoreHorizontal size={15} aria-hidden="true" /></IconButton></DropdownTrigger>
+              <DropdownTrigger asChild><IconButton label={t("connectors.more", { name: connector.name })} tooltip={false} className="connector-action"><MoreHorizontal size={15} aria-hidden="true" /></IconButton></DropdownTrigger>
               <DropdownContent align="end">
                 {connector.auth === "oauth" ? <DropdownItem icon={<LogIn size={14} />} onSelect={() => void signIn(connector)}>{t(state === "connected" ? "connectors.signInAgain" : "connectors.signIn")}</DropdownItem> : null}
                 {connector.auth !== "none" && state === "connected" ? <DropdownItem icon={<LogOut size={14} />} onSelect={() => void signOut(connector)}>{t("connectors.signOut")}</DropdownItem> : null}
