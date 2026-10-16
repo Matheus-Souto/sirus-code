@@ -1,0 +1,146 @@
+import { NavigationContainer } from "@react-navigation/native";
+import { useEffect } from "react";
+import { Alert, Linking } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { KeyboardProvider } from "react-native-keyboard-controller";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+
+import "../global.css";
+import { useSirus } from "./data/store";
+import { LaunchOverlay } from "./components/LaunchOverlay";
+import { checkForAppUpdate } from "./data/app-updates";
+import { pairComputer } from "./data/computers";
+import { AppearancePreferencesProvider } from "./features/settings/appearance/AppearancePreferencesProvider";
+import { useMobileNavigationTheme } from "./lib/useMobileNavigationTheme";
+import { createV5SheetStackNavigator, createV5StackNavigator } from "./native/createV5StackNavigator";
+import { NATIVE_LIQUID_GLASS_SUPPORTED } from "./native/native-glass";
+import { nativeHeaderScrollEdgeEffects, type AppNativeStackNavigationOptions } from "./native/StackHeader";
+import { Platform } from "react-native";
+import { ConnectScreen } from "./screens/ConnectScreen";
+import { HomeScreen } from "./screens/HomeScreen";
+import { FileScreen, FilesScreen } from "./screens/FilesScreen";
+import { DiffScreen, GitScreen } from "./screens/GitScreen";
+import { NewThreadScreen } from "./screens/NewThreadScreen";
+import {
+  SettingsScreen,
+  SettingsComputersScreen,
+  SettingsComputerScreen,
+  SettingsAddComputerScreen,
+  SettingsAlertsScreen,
+  SettingsAppearanceScreen,
+  SettingsKeyboardScreen,
+  SettingsOrganizationScreen,
+  SettingsArchivedScreen,
+  SettingsSnoozedScreen,
+  SettingsNewConversationsScreen,
+  SettingsConversationBehaviorScreen,
+  SettingsSourceControlScreen,
+  SettingsAgentBehaviorScreen,
+  SettingsMaintenanceScreen,
+  SettingsUsageScreen,
+  SettingsAboutScreen,
+} from "./screens/SettingsScreen";
+import { TerminalScreen } from "./screens/TerminalScreen";
+import { ThreadSettingsScreen } from "./screens/ThreadSettingsScreen";
+import { ThreadScreen } from "./screens/ThreadScreen";
+
+const Stack = createV5StackNavigator();
+
+/** The glass header preset: transparent over the screen's scroll view on iOS 26+. */
+const GLASS_HEADER: AppNativeStackNavigationOptions = {
+  headerBackButtonDisplayMode: "minimal",
+  headerBackTitle: "",
+  headerLargeTitle: false,
+  headerShadowVisible: false,
+  headerShown: true,
+  headerStyle: NATIVE_LIQUID_GLASS_SUPPORTED ? { backgroundColor: "transparent" } : undefined,
+  headerTitleStyle: { fontSize: 18, fontWeight: "800" },
+  headerTransparent: NATIVE_LIQUID_GLASS_SUPPORTED,
+  scrollEdgeEffects: NATIVE_LIQUID_GLASS_SUPPORTED ? nativeHeaderScrollEdgeEffects(Platform.OS, Platform.Version) : undefined,
+  unstable_navigationItemStyle: NATIVE_LIQUID_GLASS_SUPPORTED ? "editor" : undefined,
+};
+
+/** In sheets, the iOS-default centered title (no editor style) and the sheet's own color. */
+const SHEET_HEADER: AppNativeStackNavigationOptions = {
+  ...GLASS_HEADER,
+  unstable_navigationItemStyle: undefined,
+  contentStyle: { backgroundColor: "transparent" },
+};
+/** Form sheets: full height, grabber visible. */
+const FORM_SHEET = { presentation: "formSheet", sheetAllowedDetents: [1], sheetGrabberVisible: true, headerShown: false, gestureEnabled: true } as const;
+
+/** Sirus Code's iPhone app (ADR-135). */
+export default function App() {
+  useEffect(() => { void useSirus.getState().start().then(() => checkForAppUpdate()); }, []);
+  // `sirus://pair?address=…&code=…` pairs at once (a computer's QR code can carry it).
+  useEffect(() => {
+    const pair = (url: string | null | undefined) => {
+      if (!url?.startsWith("sirus://pair")) return;
+      const query = new URL(url.replace("sirus://", "https://sirus.invalid/")).searchParams;
+      const address = query.get("address"), code = query.get("code");
+      if (!address || !code) return;
+      void pairComputer(address, code).then((computer) => useSirus.getState().addComputer(computer), (reason: unknown) => Alert.alert("Não foi possível conectar", reason instanceof Error ? reason.message : String(reason)));
+    };
+    void Linking.getInitialURL().then(pair);
+    const subscription = Linking.addEventListener("url", (event) => pair(event.url));
+    return () => subscription.remove();
+  }, []);
+  return <GestureHandlerRootView style={{ flex: 1 }}>
+    <KeyboardProvider>
+      <SafeAreaProvider>
+        <AppearancePreferencesProvider>
+          <Navigation />
+          <LaunchOverlay />
+        </AppearancePreferencesProvider>
+      </SafeAreaProvider>
+    </KeyboardProvider>
+  </GestureHandlerRootView>;
+}
+
+const SettingsStack = createV5SheetStackNavigator();
+
+/** Settings: a sheet with its own stack, each row opening its page inside it. */
+function SettingsSheet() {
+  return <SettingsStack.Navigator screenOptions={SHEET_HEADER as never}>
+    <SettingsStack.Screen name="Settings" component={SettingsScreen} />
+    <SettingsStack.Screen name="SettingsComputers" component={SettingsComputersScreen} />
+    <SettingsStack.Screen name="SettingsComputer" component={SettingsComputerScreen} />
+    <SettingsStack.Screen name="SettingsAddComputer" component={SettingsAddComputerScreen} />
+    <SettingsStack.Screen name="SettingsAlerts" component={SettingsAlertsScreen} />
+    <SettingsStack.Screen name="SettingsAppearance" component={SettingsAppearanceScreen} />
+    <SettingsStack.Screen name="SettingsKeyboard" component={SettingsKeyboardScreen} />
+    <SettingsStack.Screen name="SettingsOrganization" component={SettingsOrganizationScreen} />
+    <SettingsStack.Screen name="SettingsArchived" component={SettingsArchivedScreen} />
+    <SettingsStack.Screen name="SettingsSnoozed" component={SettingsSnoozedScreen} />
+    <SettingsStack.Screen name="SettingsNewConversations" component={SettingsNewConversationsScreen} />
+    <SettingsStack.Screen name="SettingsConversationBehavior" component={SettingsConversationBehaviorScreen} />
+    <SettingsStack.Screen name="SettingsSourceControl" component={SettingsSourceControlScreen} />
+    <SettingsStack.Screen name="SettingsAgentBehavior" component={SettingsAgentBehaviorScreen} />
+    <SettingsStack.Screen name="SettingsMaintenance" component={SettingsMaintenanceScreen} />
+    <SettingsStack.Screen name="SettingsUsage" component={SettingsUsageScreen} />
+    <SettingsStack.Screen name="SettingsAbout" component={SettingsAboutScreen} />
+  </SettingsStack.Navigator>;
+}
+
+function Navigation() {
+  const theme = useMobileNavigationTheme();
+  const ready = useSirus((state) => state.ready);
+  const paired = useSirus((state) => state.computers.length > 0);
+  if (!ready) return null;
+  return <NavigationContainer theme={theme}>
+    <Stack.Navigator screenOptions={GLASS_HEADER as never}>
+      {paired ? <>
+        <Stack.Screen name="Home" component={HomeScreen} options={{ title: "Sirus" }} />
+        <Stack.Screen name="Thread" component={ThreadScreen} />
+        <Stack.Screen name="NewThread" component={NewThreadScreen} options={FORM_SHEET as never} />
+        <Stack.Screen name="Terminal" component={TerminalScreen} />
+        <Stack.Screen name="Files" component={FilesScreen} />
+        <Stack.Screen name="File" component={FileScreen} />
+        <Stack.Screen name="Git" component={GitScreen} />
+        <Stack.Screen name="Diff" component={DiffScreen} />
+        <Stack.Screen name="ThreadSettings" component={ThreadSettingsScreen} options={FORM_SHEET as never} />
+        <Stack.Screen name="SettingsSheet" component={SettingsSheet} options={FORM_SHEET as never} />
+      </> : <Stack.Screen name="Connect" component={ConnectScreen} options={{ headerShown: false }} />}
+    </Stack.Navigator>
+  </NavigationContainer>;
+}

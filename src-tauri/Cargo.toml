@@ -1,0 +1,132 @@
+[package]
+name = "sirus-code"
+version = "0.1.0"
+description = "Desktop workspace for AI-assisted software development"
+authors = ["Sirus Code"]
+license = "MIT"
+edition = "2021"
+
+[lib]
+name = "sirus_code_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+# Two builds of the same back end (ADR-131): the desktop app (default) and the
+# headless `sirus-host` for Linux servers, which does not link Tauri or WebKit:
+# `cargo build --no-default-features --features host --bin sirus-host`.
+[features]
+default = ["desktop"]
+desktop = [
+    "dep:tauri",
+    "dep:tauri-build",
+    "dep:tauri-plugin-opener",
+    "dep:tauri-plugin-dialog",
+    "dep:tauri-plugin-window-state",
+    "dep:tauri-plugin-deep-link",
+]
+host = []
+
+[[bin]]
+name = "sirus-code"
+path = "src/main.rs"
+required-features = ["desktop"]
+
+[[bin]]
+name = "sirus-host"
+path = "src/bin/sirus-host.rs"
+required-features = ["host"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [], optional = true }
+
+[dependencies]
+tauri = { version = "2", features = ["macos-private-api", "image-png"], optional = true }
+tauri-plugin-opener = { version = "2", optional = true }
+tauri-plugin-dialog = { version = "2", optional = true }
+# The file pane follows changes on disk (ADR-109).
+notify = { version = "8.2", default-features = false, features = ["macos_fsevent"] }
+tauri-plugin-window-state = { version = "2", optional = true }
+# `sirus://new?prompt=…` prompt links (ADR-122).
+tauri-plugin-deep-link = { version = "2", optional = true }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+tokio = { version = "1", features = ["process", "io-util", "sync", "macros", "rt-multi-thread", "time", "net", "signal"] }
+portable-pty = "0.9"
+which = "7"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+parking_lot = "0.12"
+rusqlite = { version = "0.40.2", features = ["bundled", "cache"], default-features = false }
+reqwest = { version = "0.13.5", default-features = false, features = ["rustls"] }
+base64 = "0.22"
+sha2 = "0.10"
+image = { version = "0.25.10", default-features = false, features = ["png", "jpeg", "ico"] }
+tempfile = "3.27"
+zip = { version = "8.6.0", default-features = false, features = ["deflate"] }
+csv = "1.4.0"
+roxmltree = "0.21.1"
+similar = "3.2.0"
+toml_edit = "0.25"
+regex = "1"
+axum = { version = "0.8.9", default-features = false, features = ["ws", "http1", "tokio", "json", "query"] }
+qrcode = { version = "0.14.1", default-features = false, features = ["svg"] }
+web-push-native = "0.5"
+tower-http = { version = "0.6", default-features = false, features = ["compression-gzip", "compression-br"] }
+# The Devices pane relays the device hub's input socket (ADR-128).
+tokio-tungstenite = { version = "0.29", default-features = false, features = ["connect"] }
+futures-util = { version = "0.3", default-features = false, features = ["std", "sink"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2-avf-audio = { version = "0.3.2", default-features = false, features = ["AVAudioEngine", "AVAudioNode", "AVAudioFormat", "AVAudioBuffer", "AVAudioFile", "AVAudioTime", "AVAudioTypes", "AVAudioIONode", "AVAudioApplication", "block2"] }
+objc2 = "0.6.4"
+global-hotkey = "0.8"
+objc2-user-notifications = { version = "0.3.2", default-features = false, features = ["std", "block2", "bitflags", "UNUserNotificationCenter", "UNNotification", "UNNotificationContent", "UNNotificationRequest", "UNNotificationTrigger", "UNNotificationResponse", "UNNotificationSettings", "UNNotificationSound"] }
+speech = "0.9"
+block2 = "0.6.2"
+objc2-web-kit = { version = "0.3.2", default-features = false, features = ["std", "objc2-core-foundation", "objc2-app-kit", "block2", "WKWebView", "WKWebViewConfiguration", "WKWebsiteDataStore", "WKNavigation", "WKNavigationDelegate", "WKNavigationAction", "WKNavigationResponse", "WKPreferences", "WKScriptMessage", "WKUserContentController", "WKUserScript", "WKSnapshotConfiguration", "WKUIDelegate", "WKWindowFeatures", "WKUserScript", "WKUserContentController", "WKContentWorld", "WKFrameInfo", "WKWebsiteDataRecord"] }
+objc2-app-kit = { version = "0.3.2", default-features = false, features = ["block2", "NSSound", "NSEvent", "NSOpenPanel", "NSSavePanel", "NSPasteboard", "NSPasteboardItem", "NSBitmapImageRep", "NSImageRep", "NSImage", "NSResponder", "NSWindow", "NSWorkspace", "NSView", "NSApplication", "NSAppearance", "NSColor", "NSVisualEffectView", "NSUserInterfaceItemIdentification", "NSPanel", "NSButton", "NSButtonCell", "NSControl", "NSCell", "NSTextField", "NSText", "NSBox", "NSScreen", "NSRunningApplication", "NSFont", "NSGraphics", "NSGlassEffectView", "NSFontDescriptor", "NSLayoutConstraint", "libc"] }
+objc2-foundation = { version = "0.3.2", default-features = false, features = ["NSBundle", "NSArray", "NSDictionary", "NSData", "NSString", "NSURL", "NSURLRequest", "NSGeometry", "NSProcessInfo", "NSError", "NSValue", "NSFileManager", "NSUserDefaults", "NSNotification", "NSSet", "NSDate"] }
+# Computer use: Accessibility, per-process input, window screenshots.
+objc2-application-services = { version = "0.3.2", default-features = false, features = ["std", "HIServices", "AXUIElement", "AXError", "AXValue", "AXValueConstants", "AXAttributeConstants", "AXActionConstants", "AXRoleConstants", "libc", "objc2"] }
+objc2-core-foundation = { version = "0.3.2", default-features = false, features = ["std", "CFString", "CFArray", "CFNumber", "CFData", "CFDictionary", "CFCGTypes", "CFBase"] }
+objc2-core-graphics = { version = "0.3.2", default-features = false, features = ["std", "CGEvent", "CGEventSource", "CGEventTypes", "CGImage", "CGDataProvider", "CGGeometry", "CGWindow", "CGRemoteOperation", "libc"] }
+objc2-screen-capture-kit = { version = "0.3.2", default-features = false, features = ["std", "SCShareableContent", "SCScreenshotManager", "SCStream", "SCContentSharingPicker", "block2", "objc2-core-graphics", "objc2-core-foundation", "libc"] }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+# The debug app decodes and encodes pasted screenshots: keep the image codecs fast there too.
+# The daily desktop app is built with this profile (`npm run build:desktop`), so it is
+# optimized: the app at opt-level 1 (quick incremental rebuilds), every dependency at 2,
+# and only line tables for debug info (smaller binary, less memory).
+# which ships optimized builds; the full release profile stays for distribution.
+[profile.dev]
+opt-level = 1
+debug = "line-tables-only"
+[profile.dev.package."*"]
+opt-level = 2
+
+[profile.dev.package.image]
+opt-level = 3
+[profile.dev.package.png]
+opt-level = 3
+[profile.dev.package.fdeflate]
+opt-level = 3
+[profile.dev.package.zune-jpeg]
+opt-level = 3
+[profile.dev.package.zune-core]
+opt-level = 3
+[profile.dev.package.base64]
+opt-level = 3
+# Session events and state replies serialize transcripts on every update.
+[profile.dev.package.serde_json]
+opt-level = 3
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+panic = "abort"
+strip = true

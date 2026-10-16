@@ -1,0 +1,84 @@
+{
+  "name": "sirus-mobile",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Sirus Code's native iPhone app (ADR-135).",
+  "main": "index.ts",
+  "scripts": {
+    "postinstall": "node scripts/vendor-ghostty.mjs && node scripts/apply-patches.mjs",
+    "start": "expo start --dev-client --lan",
+    "prebuild": "expo prebuild --platform ios --clean",
+    "typecheck": "tsc --noEmit",
+    "publish:update": "node scripts/publish-update.mjs"
+  },
+  "dependencies": {
+    "@expo-google-fonts/dm-sans": "^0.4.2",
+    "@expo/metro-runtime": "~58.0.10",
+    "@expo/ui": "~58.0.19",
+    "@react-native-menu/menu": "2.0.0",
+    "@react-navigation/elements": "2.9.26",
+    "@react-navigation/native": "7.3.4",
+    "@react-navigation/native-stack": "7.17.6",
+    "@tabler/icons-react-native": "^3.49.0",
+    "clsx": "^2.1.1",
+    "expo": "58.0.2",
+    "expo-application": "~58.1.1",
+    "expo-blur": "^58.0.3",
+    "expo-build-properties": "~58.0.9",
+    "expo-clipboard": "~58.0.3",
+    "expo-constants": "~58.0.12",
+    "expo-dev-client": "~58.0.10",
+    "expo-document-picker": "~58.0.4",
+    "expo-file-system": "~58.0.9",
+    "expo-font": "~58.0.5",
+    "expo-glass-effect": "58.0.3",
+    "expo-haptics": "~58.0.4",
+    "expo-image-picker": "~58.0.10",
+    "expo-secure-store": "~58.0.2",
+    "expo-speech-recognition": "^57.1.1",
+    "expo-splash-screen": "~58.0.4",
+    "expo-symbols": "~58.0.3",
+    "expo-updates": "~58.0.16",
+    "expo-web-browser": "~58.0.4",
+    "react": "19.3.0",
+    "react-material-icon-theme": "^1.2.0",
+    "react-native": "0.88.0-rc.3",
+    "react-native-enriched-markdown": "file:deps/react-native-enriched-markdown-1.2.0-t3.13.tgz",
+    "react-native-gesture-handler": "3.2.1",
+    "react-native-keyboard-controller": "1.22.6",
+    "react-native-reanimated": "4.7.0",
+    "react-native-safe-area-context": "~5.9.1",
+    "react-native-screens": "file:deps/react-native-screens-5.0.0-t3.27.tgz",
+    "react-native-svg": "15.15.5",
+    "react-native-worklets": "0.13.0",
+    "sirus-terminal-native": "file:./modules/sirus-terminal",
+    "tailwind-merge": "^3.5.0",
+    "uniwind": "1.12.1",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@types/react": "~19.3.0",
+    "babel-preset-expo": "~58.0.8",
+    "tailwindcss": "^4.0.0",
+    "typescript": "~6.0.0"
+  },
+  "expo": {
+    "install": {
+      "exclude": [
+        "react-native-keyboard-controller",
+        "typescript",
+        "react-native-screens",
+        "react-native-enriched-markdown"
+      ]
+    },
+    "autolinking": {
+      "buildFromSource": [
+        "@expo/ui",
+        "react-native-screens",
+        "react-native-reanimated",
+        "@react-native-menu/menu"
+      ]
+    }
+  }
+}

@@ -1,0 +1,377 @@
+//! Remote access for the headless host (ADR-131). `sirus-host serve` always serves:
+//! it listens on one chosen address (the tailnet address by default, never every
+//! address unless asked), serves the built UI from a folder, and answers the
+//! `sirus-host pair | devices | revoke` commands over a private control socket in
+//! the data folder (`host.sock`, `0600`). Pairing codes, device tokens, the peer
+//! filter and the Origin check are the Mac app's own (`remote.rs`).
+
+use super::*;
+
+/// The control socket's file name inside the data folder.
+pub const CONTROL_SOCKET: &str = "host.sock";
+const CONTROL_LIMIT: u64 = 64 * 1024;
+
+pub struct Options {
+    pub bind: IpAddr,
+    pub port: u16,
+    /// The URL to put in pairing links when the host is reached under another name.
+    pub url: Option<String>,
+    pub ui_dir: Option<PathBuf>,
+}
+
+/// Starts serving; returns the addresses a device can open.
+pub async fn start_host(app: AppHandle, data_dir: &Path, options: Options) -> Result<Vec<String>> {
+    let path = data_dir.join("remote.json");
+    let mut config = std::fs::read(&path)
+        .ok()
+        .and_then(|bytes| serde_json::from_slice::<Config>(&bytes).ok())
+        .unwrap_or_default();
+    config.enabled = true;
+    config.port = Some(options.port);
+    config.keep_awake = false;
+    let remote = Arc::new(Remote {
+        path,
+        config: parking_lot::Mutex::new(config),
+        pairing: parking_lot::Mutex::new(None),
+        server: parking_lot::Mutex::new(None),
+        error: parking_lot::Mutex::new(None),
+        revoked: broadcast::channel(16).0,
+        https: parking_lot::Mutex::new(Https::default()),
+        awake: parking_lot::Mutex::new(None),
+        listen: parking_lot::Mutex::new(Listen {
+            bind: Some(options.bind),
+            url: options.url,
+            ui_dir: options.ui_dir,
+        }),
+    });
+    if REMOTE.set(remote.clone()).is_err() {
+        return Err(Error::new("remote", "Remote access is already running."));
+    }
+    save(&remote)?;
+    refresh_https(&remote).await;
+    start(app, remote.clone()).await;
+    if let Some(error) = remote.error.lock().clone() {
+        return Err(Error::new("remote", error));
+    }
+    Ok(base_urls(&remote))
+}
+
+/// This machine's first Tailscale address: where the host listens by default.
+pub fn tailnet_address() -> Option<Ipv4Addr> {
+    tailscale_addresses().into_iter().next()
+}
+
+/// `tailscale serve` state, for the startup banner.
+pub fn https_url() -> Option<String> {
+    REMOTE.get()?.https.lock().url.clone()
+}
+
+/// A file of the built UI. Unknown paths answer the app shell, as Tauri's resolver does,
+/// so client-side routes load; nothing outside the folder is ever read.
+pub(super) fn read_asset(dir: &Path, path: &str) -> Option<(Vec<u8>, String)> {
+    let root = dir.canonicalize().ok()?;
+    let relative = path.trim_start_matches('/');
+    let safe = !relative.is_empty()
+        && relative.len() <= 512
+        && relative.split('/').all(|part| {
+            !part.is_empty() && !part.starts_with('.') && !part.contains(['\\', '\0', '%'])
+        });
+    let file = safe
+        .then(|| root.join(relative))
+        .and_then(|file| file.canonicalize().ok())
+        .filter(|file| file.starts_with(&root) && file.is_file())
+        .unwrap_or_else(|| root.join("index.html"));
+    let bytes = std::fs::read(&file).ok()?;
+    Some((bytes, mime_type(&file).into()))
+}
+
+fn mime_type(file: &Path) -> &'static str {
+    let extension = file
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    match extension.as_str() {
+        "html" => "text/html; charset=utf-8",
+        "js" | "mjs" => "text/javascript; charset=utf-8",
+        "css" => "text/css; charset=utf-8",
+        "json" | "map" => "application/json",
+        "webmanifest" => "application/manifest+json",
+        "svg" => "image/svg+xml",
+        "png" => "image/png",
+        "jpg" | "jpeg" => "image/jpeg",
+        "gif" => "image/gif",
+        "webp" => "image/webp",
+        "ico" => "image/x-icon",
+        "woff" => "font/woff",
+        "woff2" => "font/woff2",
+        "ttf" => "font/ttf",
+        "wasm" => "application/wasm",
+        "txt" => "text/plain; charset=utf-8",
+        "mp3" => "audio/mpeg",
+        "mp4" => "video/mp4",
+        _ => "application/octet-stream",
+    }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(tag = "type", rename_all = "camelCase")]
+enum ControlRequest {
+    Pair,
+    Status,
+    #[serde(rename_all = "camelCase")]
+    Revoke {
+        device_id: String,
+    },
+}
+
+/// Answers `sirus-host pair | devices | revoke` from the same user (the socket is `0600`
+/// in the `0700` data folder). One JSON request and one JSON reply per connection.
+pub async fn serve_control(app: AppHandle, data_dir: &Path) -> std::io::Result<()> {
+    use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
+    let socket = data_dir.join(CONTROL_SOCKET);
+    let _ = std::fs::remove_file(&socket);
+    let listener = tokio::net::UnixListener::bind(&socket)?;
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&socket, std::fs::Permissions::from_mode(0o600))?;
+    }
+    crate::runtime::async_runtime::spawn(async move {
+        loop {
+            let Ok((stream, _)) = listener.accept().await else {
+                break;
+            };
+            let app = app.clone();
+            crate::runtime::async_runtime::spawn(async move {
+                let (read, mut write) = stream.into_split();
+                let mut line = String::new();
+                if BufReader::new(read.take(CONTROL_LIMIT))
+                    .read_line(&mut line)
+                    .await
+                    .is_err()
+                {
+                    return;
+                }
+                let reply = match serde_json::from_str::<ControlRequest>(&line) {
+                    Ok(request) => control(app, request).await,
+                    Err(error) => Err(Error::new("control", error.to_string())),
+                };
+                let reply = match reply {
+                    Ok(value) => json!({ "ok": true, "value": value }),
+                    Err(error) => json!({ "ok": false, "error": error }),
+                };
+                let _ = write.write_all(format!("{reply}\n").as_bytes()).await;
+            });
+        }
+    });
+    Ok(())
+}
+
+async fn control(app: AppHandle, request: ControlRequest) -> Result<Value> {
+    Ok(match request {
+        ControlRequest::Pair => serde_json::to_value(remote_pair().await?)?,
+        ControlRequest::Status => serde_json::to_value(remote_action(app, Action::Status).await?)?,
+        ControlRequest::Revoke { device_id } => {
+            let known = remote()?
+                .config
+                .lock()
+                .devices
+                .iter()
+                .any(|device| device.id == device_id);
+            if !known {
+                return Err(Error::not_found("No paired device has this id."));
+            }
+            serde_json::to_value(remote_action(app, Action::Revoke { device_id }).await?)?
+        }
+    })
+}
+
+/// The CLI's side: one request to a running `sirus-host serve`. `None` when none runs.
+pub fn control_request(
+    data_dir: &Path,
+    request: &Value,
+) -> Option<std::result::Result<Value, Value>> {
+    use std::io::{BufRead, Read, Write};
+    let mut stream = std::os::unix::net::UnixStream::connect(data_dir.join(CONTROL_SOCKET)).ok()?;
+    let _ = stream.set_read_timeout(Some(Duration::from_secs(30)));
+    stream.write_all(format!("{request}\n").as_bytes()).ok()?;
+    let mut line = String::new();
+    std::io::BufReader::new(stream.take(CONTROL_LIMIT))
+        .read_line(&mut line)
+        .ok()?;
+    let reply: Value = serde_json::from_str(&line).ok()?;
+    Some(if reply["ok"] == true {
+        Ok(reply["value"].clone())
+    } else {
+        Err(reply["error"].clone())
+    })
+}
+
+/// Paired devices straight from `remote.json`, when no server runs.
+pub fn saved_devices(data_dir: &Path) -> Vec<DeviceInfo> {
+    std::fs::read(data_dir.join("remote.json"))
+        .ok()
+        .and_then(|bytes| serde_json::from_slice::<Config>(&bytes).ok())
+        .unwrap_or_default()
+        .devices
+        .into_iter()
+        .map(|device| DeviceInfo {
+            id: device.id,
+            name: device.name,
+            created_at: device.created_at,
+            last_seen: device.last_seen,
+            push: device.push.is_some(),
+        })
+        .collect()
+}
+
+/// Removes a device from `remote.json` when no server runs. Whether it was there.
+pub fn revoke_saved(data_dir: &Path, device_id: &str) -> Result<bool> {
+    let path = data_dir.join("remote.json");
+    let Some(mut config) = std::fs::read(&path)
+        .ok()
+        .and_then(|bytes| serde_json::from_slice::<Config>(&bytes).ok())
+    else {
+        return Ok(false);
+    };
+    let before = config.devices.len();
+    config.devices.retain(|device| device.id != device_id);
+    if config.devices.len() == before {
+        return Ok(false);
+    }
+    let remote = Remote {
+        path,
+        config: parking_lot::Mutex::new(config),
+        pairing: parking_lot::Mutex::new(None),
+        server: parking_lot::Mutex::new(None),
+        error: parking_lot::Mutex::new(None),
+        revoked: broadcast::channel(1).0,
+        https: parking_lot::Mutex::new(Https::default()),
+        awake: parking_lot::Mutex::new(None),
+        listen: parking_lot::Mutex::new(Listen::default()),
+    };
+    save(&remote)?;
+    Ok(true)
+}
+
+/// The pairing link as a QR code for a terminal (two rows per character).
+pub fn qr_text(text: &str) -> Option<String> {
+    let code = qrcode::QrCode::with_error_correction_level(text, qrcode::EcLevel::M).ok()?;
+    Some(
+        code.render::<qrcode::render::unicode::Dense1x2>()
+            .dark_color(qrcode::render::unicode::Dense1x2::Light)
+            .light_color(qrcode::render::unicode::Dense1x2::Dark)
+            .quiet_zone(true)
+            .build(),
+    )
+}
+
+impl DeviceInfo {
+    pub fn summary(&self) -> String {
+        let seen = self
+            .last_seen
+            .map(|at| at.format("%Y-%m-%d %H:%M UTC").to_string())
+            .unwrap_or_else(|| "never".into());
+        format!(
+            "{}  {}  paired {}  last seen {}{}",
+            self.id,
+            self.name,
+            self.created_at.format("%Y-%m-%d"),
+            seen,
+            if self.push { "  alerts on" } else { "" }
+        )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn assets_stay_inside_the_ui_folder() {
+        let dir = tempfile::tempdir().unwrap();
+        let ui = dir.path().join("dist");
+        std::fs::create_dir_all(ui.join("assets")).unwrap();
+        std::fs::write(ui.join("index.html"), "<html>shell</html>").unwrap();
+        std::fs::write(ui.join("assets/app-1.js"), "js").unwrap();
+        std::fs::write(dir.path().join("secret.txt"), "secret").unwrap();
+        let (bytes, mime) = read_asset(&ui, "/assets/app-1.js").unwrap();
+        assert_eq!(
+            (bytes.as_slice(), mime.as_str()),
+            (&b"js"[..], "text/javascript; charset=utf-8")
+        );
+        // Routes and anything outside the folder get the app shell, never the file.
+        for path in [
+            "/",
+            "/sessions/42",
+            "/../secret.txt",
+            "/assets/../../secret.txt",
+            "/%2e%2e/secret.txt",
+            "/.env",
+        ] {
+            let (bytes, mime) = read_asset(&ui, path).unwrap();
+            assert_eq!(bytes, b"<html>shell</html>", "{path}");
+            assert!(mime.starts_with("text/html"));
+        }
+        #[cfg(unix)]
+        {
+            std::os::unix::fs::symlink(dir.path().join("secret.txt"), ui.join("link.txt")).unwrap();
+            assert_eq!(
+                read_asset(&ui, "/link.txt").unwrap().0,
+                b"<html>shell</html>"
+            );
+        }
+    }
+
+    #[test]
+    fn saved_devices_can_be_listed_and_revoked_offline() {
+        let dir = tempfile::tempdir().unwrap();
+        let remote = Remote {
+            path: dir.path().join("remote.json"),
+            config: parking_lot::Mutex::new(Config::default()),
+            pairing: parking_lot::Mutex::new(None),
+            server: parking_lot::Mutex::new(None),
+            error: parking_lot::Mutex::new(None),
+            revoked: broadcast::channel(1).0,
+            https: parking_lot::Mutex::new(Https::default()),
+            awake: parking_lot::Mutex::new(None),
+            listen: parking_lot::Mutex::new(Listen::default()),
+        };
+        *remote.pairing.lock() = Some(PairCode {
+            hash: hash("123456"),
+            expires: Instant::now() + PAIR_TTL,
+            failures: 0,
+        });
+        let (id, _) = redeem(&remote, "123456", "Phone", None).unwrap();
+        let devices = saved_devices(dir.path());
+        assert_eq!(devices.len(), 1);
+        assert!(devices[0].summary().contains("Phone"));
+        assert!(!revoke_saved(dir.path(), "other").unwrap());
+        assert!(revoke_saved(dir.path(), &id).unwrap());
+        assert!(saved_devices(dir.path()).is_empty());
+    }
+
+    #[test]
+    fn a_bound_host_advertises_its_own_address() {
+        let dir = tempfile::tempdir().unwrap();
+        let remote = Remote {
+            path: dir.path().join("remote.json"),
+            config: parking_lot::Mutex::new(Config::default()),
+            pairing: parking_lot::Mutex::new(None),
+            server: parking_lot::Mutex::new(None),
+            error: parking_lot::Mutex::new(None),
+            revoked: broadcast::channel(1).0,
+            https: parking_lot::Mutex::new(Https::default()),
+            awake: parking_lot::Mutex::new(None),
+            listen: parking_lot::Mutex::new(Listen {
+                bind: Some("100.90.1.2".parse().unwrap()),
+                url: None,
+                ui_dir: None,
+            }),
+        };
+        assert_eq!(base_urls(&remote), ["http://100.90.1.2:7710"]);
+        remote.listen.lock().url = Some("http://vps.tail.ts.net:7710".into());
+        assert_eq!(base_urls(&remote), ["http://vps.tail.ts.net:7710"]);
+        assert!(qr_text("http://100.90.1.2:7710/?pair=123456").is_some());
+    }
+}

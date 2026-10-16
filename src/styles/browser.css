@@ -1,0 +1,8 @@
+/* Device mode resize rails (ADR-111): outside the frame, since the page paints above the DOM. */
+.browser-rail { position: absolute; z-index: 1; display: grid; place-items: center; border-radius: 4px; touch-action: none; transition: background-color var(--motion-fast) var(--ease-out); }
+.browser-rail::after { content: ""; border-radius: 999px; background: var(--border-strong, var(--text-muted)); opacity: 0.55; transition: opacity var(--motion-fast) var(--ease-out); }
+.browser-rail[data-edge="left"]::after, .browser-rail[data-edge="right"]::after { width: 3px; height: 28px; }
+.browser-rail[data-edge="bottom"]::after { width: 28px; height: 3px; }
+.browser-rail[data-edge="bottomLeft"]::after, .browser-rail[data-edge="bottomRight"]::after { width: 5px; height: 5px; }
+.browser-rail:hover, .browser-rail:focus-visible { background: color-mix(in srgb, var(--text-primary) 8%, transparent); outline: none; }
+.browser-rail:hover::after, .browser-rail:focus-visible::after { opacity: 1; }

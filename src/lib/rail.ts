@@ -1,0 +1,27 @@
+/** Customizable rail items (ADR-052). Settings stays fixed at the bottom. */
+export const RAIL_ITEMS = ["home", "inbox", "tasks", "archived", "pulls"] as const;
+export type RailItem = (typeof RAIL_ITEMS)[number];
+/** Main views that are pages of their own (the rail highlights only that item). */
+export const PAGE_ITEMS = ["inbox", "tasks", "archived", "pulls"] as const;
+export const RAIL_LABELS: Record<RailItem, string> = {
+  home: "Home", inbox: "inbox.title", tasks: "tasks.title", archived: "Archived sessions",
+  pulls: "pulls.title",
+};
+
+/** Saved order first (unknown IDs dropped), then any item the saved order lacks, in default order. */
+export function railOrder(saved: readonly string[]): RailItem[] {
+  const known = saved.filter((id): id is RailItem => (RAIL_ITEMS as readonly string[]).includes(id));
+  const unique = [...new Set(known)];
+  return [...unique, ...RAIL_ITEMS.filter((id) => !unique.includes(id))];
+}
+
+/** Hidden items stay visible while they are the current page; Home is never hidden. */
+export function visibleRail(saved: readonly string[], hidden: readonly string[], current: string): RailItem[] {
+  return railOrder(saved).filter((id) => id === "home" || id === current || !hidden.includes(id));
+}
+
+export function moveRailItem(order: readonly RailItem[], id: RailItem, to: number): RailItem[] {
+  const next = order.filter((item) => item !== id);
+  next.splice(Math.max(0, Math.min(to, next.length)), 0, id);
+  return next;
+}

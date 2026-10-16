@@ -1,0 +1,14 @@
+{
+  "extends": "expo/tsconfig.base.json",
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": false,
+    "noImplicitOverride": true,
+    "paths": {
+      "@sirus/*": ["../src/*"],
+      "@/*": ["../src/*"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.tsx", "../src/client/types.ts"]
+}
