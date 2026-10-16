@@ -1,10 +1,16 @@
 @layer components {
-  .composer-contour { position:absolute; inset:-1px; padding:2px; overflow:hidden; pointer-events:none; border-radius:inherit; opacity:.85; transition:opacity var(--motion-slow) var(--ease-out); -webkit-mask:linear-gradient(white 0 0) content-box,linear-gradient(white 0 0); -webkit-mask-composite:xor; mask:linear-gradient(white 0 0) content-box,linear-gradient(white 0 0); mask-composite:exclude; }
-  .composer-contour canvas { position:absolute; inset:0; display:block; width:100%; height:100%; }
-  .agent-composer:has(textarea:focus) .composer-contour { opacity:.45; }
-  .composer-contour[data-reduced="true"] { opacity:.45; transition:none; }
+  /* "+" and dictation: plain circles; "+" carries a faint fill, both darken on hover. */
+  .composer-plain-button { transition:color var(--motion-fast),background-color var(--motion-fast); }
+  .composer-plain-button-filled { background:color-mix(in srgb,var(--text-primary) 6%,transparent); }
+  .composer-plain-button:hover:not(:disabled) { background:color-mix(in srgb,var(--text-primary) 10%,transparent); }
+  /* While the agent works: a soft light travels the composer's edge. */
+  @property --composer-light-angle { syntax:"<angle>"; inherits:false; initial-value:0deg; }
+  .composer-working-light { position:absolute; inset:-1px; z-index:1; padding:1.5px; border-radius:inherit; pointer-events:none; background:conic-gradient(from var(--composer-light-angle),transparent 0 68%,color-mix(in srgb,var(--info) 85%,white) 80%,#f3b37a 89%,transparent 100%); -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0); -webkit-mask-composite:xor; mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0); mask-composite:exclude; animation:composer-light 2.6s linear infinite, composer-light-in var(--motion-slow) var(--ease-out) both; }
+  .composer-working-light[data-speed="slow"] { animation-duration:3.8s,var(--motion-slow); }
+  .composer-working-light[data-speed="fast"] { animation-duration:1.7s,var(--motion-slow); }
+  @keyframes composer-light { to { --composer-light-angle:360deg; } }
+  @keyframes composer-light-in { from { opacity:0; } }
   .composer-speed-setting [role="group"],.composer-speed-setting button[data-value] { border-radius:999px; }
-  @media (prefers-reduced-motion:reduce) { .composer-contour { opacity:.45; transition:none; } }
   .attachment-viewer-overlay { position:fixed; inset:0; z-index:50; background:color-mix(in srgb,var(--background-0) 85%,transparent); backdrop-filter:blur(4px); }
   .attachment-viewer { position:fixed; inset:0; z-index:51; display:flex; align-items:center; justify-content:center; padding:24px; outline:none; }
   .attachment-viewer-close { position:absolute; top:16px; right:16px; display:grid; place-items:center; width:36px; height:36px; border:1px solid var(--border-default); border-radius:999px; background:color-mix(in srgb,var(--background-0) 70%,transparent); color:var(--text-secondary); backdrop-filter:blur(4px); }
@@ -25,13 +31,6 @@
   .attachment-viewer-status { position:fixed; bottom:70px; left:50%; transform:translateX(-50%); max-width:min(560px,calc(100vw - 40px)); padding:6px 12px; border-radius:999px; background:color-mix(in srgb,var(--background-0) 78%,transparent); color:var(--text-secondary); text-align:center; backdrop-filter:blur(8px); }
   .composer-control { height:28px; min-height:28px; flex-shrink:0; border-radius:999px; }
   .composer-icon-control { width:28px; }
-  .composer-metal-button { isolation:isolate; box-shadow:inset 0 0 0 1px var(--border-subtle); transition:color var(--motion-fast),box-shadow var(--motion-fast); }
-  .composer-metal-surface,.composer-contour { background:conic-gradient(from 45deg,var(--text-primary),var(--text-muted) 14%,var(--background-0) 26%,var(--text-primary) 40%,var(--text-secondary) 58%,var(--background-0) 72%,var(--text-primary)); }
-  .composer-metal-surface { position:absolute; inset:0; overflow:hidden; border-radius:inherit; pointer-events:none; }
-  .composer-metal-surface canvas { display:block; width:100%; height:100%; border-radius:inherit; }
-  .composer-metal-core { position:absolute; inset:2px; border-radius:inherit; pointer-events:none; background:linear-gradient(var(--background-3),var(--background-0)); box-shadow:inset 0 1px 1px var(--border-default); }
-  .composer-metal-button:hover:not(:disabled) { box-shadow:inset 0 0 0 1px var(--border-default); }
-  .composer-metal-button:active:not(:disabled) .composer-metal-core { box-shadow:inset 0 2px 4px rgb(0 0 0/.4); }
   /* Keep stateful sizing/display in this layer: utility flex/shrink/wrap classes
      would override the recording state even with a more specific selector. */
   .composer-footer { flex-wrap:wrap; }
@@ -43,7 +42,6 @@
   .agent-composer[data-dictating="true"] .composer-footer { flex-wrap:nowrap; min-height:52px; }
   .agent-composer[data-dictating="true"] .composer-footer-context { flex:0 0 auto; }
   .agent-composer[data-dictating="true"] .composer-footer-actions { flex:1; min-width:0; }
-  .agent-composer[data-dictating="true"] .composer-contour { opacity:.35; }
   .composer-dictation { position:relative; display:flex; align-items:center; flex:1; min-width:0; gap:10px; animation:dictation-in var(--motion-fast) var(--ease-out) both; }
   .composer-dictation[data-leaving] { animation:dictation-out var(--motion-fast) var(--ease-out) both; pointer-events:none; }
   .dictation-finish { background:var(--accent); color:var(--background-0); transition:background-color var(--motion-fast) var(--ease-out),scale var(--motion-fast) var(--ease-out); }
@@ -218,7 +216,7 @@ button.attachment-chip-open:hover .attachment-chip-name { text-decoration: under
   transition: border-color var(--motion-fast) var(--ease-out);
 }
 .agent-composer[data-single]:focus-within::before { border-color: color-mix(in oklab, var(--text-primary) 20%, transparent); }
-.agent-composer[data-single] .composer-contour { grid-row: 1 / 2; grid-column: 1 / -1; border-radius: 999px; }
+.agent-composer[data-single] .composer-working-light { grid-row: 1 / 2; grid-column: 1 / -1; border-radius: 999px; }
 .agent-composer[data-single] .composer-editor { grid-row: 1; grid-column: 2; min-width: 0; }
 .agent-composer[data-single] .composer-editor textarea { overflow: hidden; }
 .agent-composer[data-single] :is(.composer-footer, .composer-footer-context, .composer-footer-actions) { display: contents; }

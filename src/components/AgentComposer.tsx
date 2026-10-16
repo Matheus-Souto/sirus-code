@@ -12,7 +12,6 @@ import { memo, useCallback, useContext, useEffect, useLayoutEffect, useRef, useS
 import { createPortal } from "react-dom";
 import type { AgentInstall, AgentProviderId, ApprovalMode, ExecutionOptions, Session } from "@/client/types";
 import { ComposerAddMenu, ComposerContextChips } from "@/components/ComposerAddMenu";
-import { ComposerContour } from "@/components/ComposerContour";
 import { ComposerSuggestions } from "@/components/ComposerSuggestions";
 import { useComposerSuggestions } from "@/lib/use-composer-suggestions";
 import { composerSegments, hasComposerTokens } from "@/lib/composer-tokens";
@@ -458,9 +457,10 @@ function AgentComposerView({ session, disabled, onSend, onStop, onModelChange }:
     {session ? <ComposerPromptQueue key={session.id} sessionId={session.id} /> : null}
     <Popover open={suggestions.visible} onOpenChange={(open) => { if (!open) suggestions.dismiss(); }}>
     <PopoverAnchor asChild>
-    <div ref={boundary} data-dictating={dictating} data-single={(single && !planPending) || undefined} className="agent-composer relative isolate mx-auto w-full max-w-[var(--chat-column-width)] rounded-[var(--composer-radius)] border border-[color-mix(in_oklab,var(--text-primary)_10%,transparent)] bg-[color-mix(in_oklab,var(--text-primary)_3%,transparent)] backdrop-blur-[8px] transition-colors duration-[var(--motion-fast)] focus-within:border-[color-mix(in_oklab,var(--text-primary)_20%,transparent)]" data-dropping={dropping || undefined}>
-      {/* One animated rim at a time: the side chat's composer keeps a still border; the phone's pill has none (ADR-129). */}
-      {session?.sideChat || phone ? null : <ComposerContour speed={settings.composerLineSpeed} reducedMotion={reducedMotion || dictating} />}
+    <div ref={boundary} data-dictating={dictating} data-single={(single && !planPending) || undefined} className="agent-composer relative isolate mx-auto w-full max-w-[var(--chat-column-width)] rounded-[var(--composer-radius)] border border-[color-mix(in_oklab,var(--text-primary)_10%,transparent)] bg-[color-mix(in_oklab,var(--text-primary)_3%,transparent)] backdrop-blur-[8px] transition-colors duration-[var(--motion-fast)]" data-dropping={dropping || undefined}>
+      {/* A thin, still border at rest and while typing; while the agent works a soft light travels it,
+          so the effect says "busy" instead of decorating (the phone's pill keeps none, ADR-129). */}
+      {running && !phone && !reducedMotion ? <span className="composer-working-light" data-speed={settings.composerLineSpeed} aria-hidden="true" /> : null}
       {dropping ? <div className="composer-drop" aria-hidden="true">{t("composer.dropHere")}</div> : null}
       {dropping && primary ? createPortal(<div className="window-drop" aria-hidden="true"><span>{t("composer.dropHere")}</span></div>, document.body) : null}
       {session ? <HandoffCard session={session} /> : null}

@@ -12,7 +12,6 @@ import { formatUnknownError } from "@/lib/format-error";
 import { composerPopoverLayout } from "@/lib/popover-position";
 import { Popover, PopoverContent, PopoverTrigger } from "@/primitives/Popover";
 import { useAppStore } from "@/store/app-store";
-import { ComposerMetalSurface } from "@/components/ComposerMetalSurface";
 import { ComposerImageAttachment } from "@/components/ComposerImageAttachment";
 import { ComposerSkillPicker } from "@/components/ComposerSkillPicker";
 
@@ -51,7 +50,7 @@ export function ComposerAddMenu({ owner, disabled, context, onChange, planningAv
   };
   const item = "ui-control flex w-full items-center gap-2.5 rounded-[9px] px-2 py-2 text-left text-text-secondary hover:bg-background-3 hover:text-text-primary disabled:opacity-40";
   return <Popover open={open} onOpenChange={(next) => { setOpen(next); if (next) { setLayout(composerPopoverLayout(trigger.current, boundaryRef.current)); setPage("add"); setError(null); } }}>
-    <PopoverTrigger asChild><button ref={trigger} type="button" disabled={disabled || picking} aria-label={t("composer.add")} className="composer-control composer-icon-control composer-metal-button titlebar-no-drag relative inline-flex shrink-0 items-center justify-center rounded-full text-text-secondary hover:text-text-primary disabled:opacity-40"><ComposerMetalSurface disabled={disabled || picking} /><Plus size={16} className="relative z-10" aria-hidden="true" /></button></PopoverTrigger>
+    <PopoverTrigger asChild><button ref={trigger} type="button" disabled={disabled || picking} aria-label={t("composer.add")} className="composer-control composer-icon-control composer-plain-button composer-plain-button-filled titlebar-no-drag relative inline-flex shrink-0 items-center justify-center rounded-full text-text-secondary hover:text-text-primary disabled:opacity-40"><Plus size={16} className="relative z-10" aria-hidden="true" /></button></PopoverTrigger>
     <PopoverContent side="top" align="start" sideOffset={layout.sideOffset} alignOffset={layout.alignOffset} style={{ width: layout.width, maxWidth: "calc(100vw - 20px)" }} className="max-h-[var(--radix-popover-content-available-height)] overflow-auto p-2" aria-label={t("composer.add")}>
       {page === "add" ? <><p className="px-2 pb-1 pt-1 ui-caption text-text-muted">{t("composer.add")}</p>
         {isRemoteUi || remoteComputer ? <>

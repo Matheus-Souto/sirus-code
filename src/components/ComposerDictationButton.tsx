@@ -1,7 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { Check, Mic, X } from "@/components/icons/phosphor";
 import { client, isRemoteUi } from "@/client";
-import { ComposerMetalSurface } from "@/components/ComposerMetalSurface";
 import { useTranslation } from "@/i18n/use-translation";
 import { recordingClock, waveformBars } from "@/lib/dictation-bar";
 import { formatUnknownError } from "@/lib/format-error";
@@ -195,8 +194,8 @@ export function ComposerDictationButton({ onText, disabled, onActiveChange, comp
   if (!supported) return null;
   if (!listening) return <span ref={root} className="inline-flex shrink-0">
     <Tooltip label={t(busy ? "Starting dictation" : "Dictate")}>
-      <button ref={trigger} type="button" disabled={disabled || busy} aria-label={t("Dictate")} aria-busy={busy} aria-pressed={false} onClick={() => void start()} className={`composer-control composer-icon-control ${compact ? "composer-dictate-plain" : "composer-metal-button"} relative inline-flex shrink-0 items-center justify-center rounded-full text-text-secondary hover:text-text-primary disabled:opacity-40`}>
-        {compact ? null : <ComposerMetalSurface disabled={Boolean(disabled || busy)} />}<Mic size={compact ? 18 : 16} className="relative z-10" aria-hidden="true" />
+      <button ref={trigger} type="button" disabled={disabled || busy} aria-label={t("Dictate")} aria-busy={busy} aria-pressed={false} onClick={() => void start()} className={`composer-control composer-icon-control ${compact ? "composer-dictate-plain" : "composer-plain-button"} relative inline-flex shrink-0 items-center justify-center rounded-full text-text-secondary hover:text-text-primary disabled:opacity-40`}>
+        <Mic size={compact ? 18 : 16} className="relative z-10" aria-hidden="true" />
       </button>
     </Tooltip>
   </span>;

@@ -226,7 +226,7 @@ const pairs: Record<string, string> = {
   "Now": "agora",
 
   "Composer line speed": "Velocidade da linha do composer",
-  "The silver line pauses while the text field is focused.": "A linha prateada pausa enquanto o campo de texto estiver focado.",
+  "The light that travels the composer's edge while the agent works.": "A luz que percorre a borda do composer enquanto o agente trabalha.",
   "Slow": "Lenta",
   "Smooth": "Suave",
   "Fast": "Rápida",
