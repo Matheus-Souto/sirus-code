@@ -20,3 +20,20 @@
   @keyframes connections-qr-in { from { opacity: 0; scale: .96; } }
   @media (prefers-reduced-motion: reduce) { .connections-qr, .connections-paired { animation: none; } }
 }
+
+/* Renaming a paired device in place: the field, then Save; Escape cancels. */
+.connections-rename { display: flex; align-items: center; gap: 6px; }
+.connections-rename input {
+  width: 220px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 9px;
+  border: 1px solid var(--border-default);
+  background: var(--background-2);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.connections-rename input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }

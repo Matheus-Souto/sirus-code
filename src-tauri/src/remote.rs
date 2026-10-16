@@ -193,6 +193,12 @@ pub enum Action {
     Revoke {
         device_id: String,
     },
+    /// Gives a paired device the owner's own name, to tell devices apart in the list.
+    #[serde(rename_all = "camelCase")]
+    Rename {
+        device_id: String,
+        name: String,
+    },
     EnableHttps,
     DisableHttps,
     /// Opens Tailscale's page that allows HTTPS on the tailnet.
@@ -423,6 +429,18 @@ pub async fn remote_action(app: AppHandle, action: Action) -> Result<Status> {
             save(&remote)?;
             sync_awake(&remote);
         }
+        Action::Rename { device_id, name } => {
+            let name = owner_device_name(&name)?;
+            let mut config = remote.config.lock();
+            let device = config
+                .devices
+                .iter_mut()
+                .find(|device| device.id == device_id)
+                .ok_or_else(|| Error::new("remote", "That device is no longer paired."))?;
+            device.name = name;
+            drop(config);
+            save(&remote)?;
+        }
         Action::Revoke { device_id } => {
             remote
                 .config
@@ -434,6 +452,18 @@ pub async fn remote_action(app: AppHandle, action: Action) -> Result<Status> {
         }
     }
     Ok(status(&remote))
+}
+
+/// A device name as the owner typed it: trimmed, one line, at most 60 characters.
+fn owner_device_name(name: &str) -> Result<String> {
+    let name = name.trim();
+    if name.is_empty() {
+        return Err(Error::new("remote", "Give the device a name."));
+    }
+    if name.chars().any(char::is_control) {
+        return Err(Error::new("remote", "The name must be one line of text."));
+    }
+    Ok(name.chars().take(60).collect())
 }
 
 /// A fresh one-time code; it replaces any earlier one.
@@ -1735,6 +1765,20 @@ fn tailscale_addresses() -> Vec<Ipv4Addr> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn device_names_are_one_trimmed_line_of_at_most_60_characters() {
+        assert_eq!(
+            owner_device_name("  iPhone do trabalho ").unwrap(),
+            "iPhone do trabalho"
+        );
+        assert!(owner_device_name("   ").is_err());
+        assert!(owner_device_name("iPhone\nde alguém").is_err());
+        assert_eq!(
+            owner_device_name(&"á".repeat(80)).unwrap().chars().count(),
+            60
+        );
+    }
 
     fn remote(dir: &Path) -> Remote {
         Remote {

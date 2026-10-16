@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, Copy, LoaderCircle, RefreshCw, ShieldCheck, Smartphone } from "@/components/icons/phosphor";
+import { Check, Copy, LoaderCircle, Pencil, RefreshCw, ShieldCheck, Smartphone } from "@/components/icons/phosphor";
 import { client as activeClient, localClient } from "@/client";
 
 /** Remote access is this Mac's own, whatever computer the window works on (ADR-133). */
@@ -25,6 +25,8 @@ export function ConnectionsSettings({ locale }: { locale: string }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  /** The device being renamed and the name typed so far. */
+  const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const devices = useRef<RemoteStatus["devices"]>([]);
 
@@ -137,6 +139,17 @@ export function ConnectionsSettings({ locale }: { locale: string }) {
           <SettingsRow key={device.id} title={device.name} description={(device.lastSeen
             ? t("connections.deviceSeen", { date: dates.format(new Date(device.createdAt)), seen: times.format(new Date(device.lastSeen)) })
             : t("connections.deviceAdded", { date: dates.format(new Date(device.createdAt)) })) + (device.push ? ` · ${t("connections.alertsOn")}` : "")}>
+            {renaming?.id === device.id ? <form className="connections-rename" onSubmit={(event) => {
+              event.preventDefault();
+              const name = renaming.name.trim();
+              setRenaming(null);
+              if (name && name !== device.name) void act({ type: "rename", deviceId: device.id, name });
+            }}>
+              <input autoFocus value={renaming.name} maxLength={60} aria-label={t("connections.renameLabel", { name: device.name })}
+                onChange={(event) => setRenaming({ id: device.id, name: event.target.value })}
+                onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); setRenaming(null); } }} />
+              <InteractiveButton variant="toolbar" type="submit" disabled={busy || !renaming.name.trim()}><Check size={14} aria-hidden="true" />{t("connections.renameSave")}</InteractiveButton>
+            </form> : <InteractiveButton variant="toolbar" disabled={busy} aria-label={t("connections.renameLabel", { name: device.name })} onClick={() => setRenaming({ id: device.id, name: device.name })}><Pencil size={14} aria-hidden="true" /></InteractiveButton>}
             {device.push ? <InteractiveButton variant="toolbar" disabled={busy} onClick={() => void act({ type: "testPush", deviceId: device.id })}>{t("connections.testAlert")}</InteractiveButton> : null}
             <InteractiveButton variant="toolbar" className="text-danger hover:text-danger" disabled={busy} aria-label={t("connections.removeLabel", { name: device.name })} onClick={() => void act({ type: "revoke", deviceId: device.id })}>{t("connections.remove")}</InteractiveButton>
           </SettingsRow>

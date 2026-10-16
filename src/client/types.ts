@@ -870,6 +870,7 @@ export interface SecretSnapshot { requests: SecretRequest[] }
 
 /** Remote access (ADR-080): the Mac serving this app to paired devices over Tailscale. */
 export type RemoteAction = { type: "status" } | { type: "setEnabled"; enabled: boolean } | { type: "revoke"; deviceId: string }
+  | { type: "rename"; deviceId: string; name: string }
   | { type: "enableHttps" } | { type: "disableHttps" } | { type: "openHttpsSetup" } | { type: "testPush"; deviceId: string }
   | { type: "setKeepAwake"; enabled: boolean };
 export interface RemoteDevice { id: string; name: string; createdAt: string; lastSeen: string | null; push: boolean }

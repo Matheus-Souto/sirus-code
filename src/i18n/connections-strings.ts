@@ -42,6 +42,8 @@ const strings: Record<string, [string, string]> = {
   "connections.deviceSeen": ["Added {date} · last used {seen}", "Adicionado em {date} · último uso {seen}"],
   "connections.remove": ["Remove", "Remover"],
   "connections.removeLabel": ["Remove {name}", "Remover {name}"],
+  "connections.renameLabel": ["Rename {name}", "Renomear {name}"],
+  "connections.renameSave": ["Save", "Salvar"],
   "connections.safety": ["What a device can do", "O que um aparelho pode fazer"],
   "connections.safetyHelp": ["A connected device can do what this window does: start sessions, send messages, approve actions, commit and push. Pickers, dictation and computer use stay on the Mac. Remove a device you no longer use.", "Um aparelho conectado pode fazer o que esta janela faz: abrir sessões, enviar mensagens, aprovar ações, fazer commit e push. Seletores de arquivo, ditado e controle do computador ficam só no Mac. Remova o aparelho que não usar mais."],
 };
