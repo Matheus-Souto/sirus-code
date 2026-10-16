@@ -54,7 +54,7 @@ header, main, footer { position: relative; z-index: 2; }
 .burger { display: none; }
 
 /* Scroll-driven 3D hero: a tall track with a sticky stage. --p runs 0 → 1 while it pins. */
-.hero-track { height: 190vh; position: relative; }
+.hero-track { height: 240vh; position: relative; }
 .hero-stage { position: sticky; top: 0; height: 100vh; overflow: hidden; perspective: 1400px; perspective-origin: 50% 30%; }
 .hero-copy { position: absolute; inset: 0 0 auto; padding-top: 128px; text-align: center; z-index: 3;
   opacity: calc(1 - var(--p, 0) * 2.2); transform: translateY(calc(var(--p, 0) * -96px)) scale(calc(1 - var(--p, 0) * .08)); filter: blur(calc(var(--p, 0) * 12px)); }
@@ -70,15 +70,21 @@ h1 .w { display: inline-block; opacity: 0; transform: translateY(64px); filter: 
 .proof span { display: inline-flex; align-items: center; gap: 8px; }
 .fade-in { opacity: 0; transform: translateY(32px); filter: blur(8px); animation: rise 1.1s var(--ease) forwards; }
 
-.scene { position: absolute; left: 50%; top: 50%; width: min(1120px, 92vw); transform-style: preserve-3d;
-  transform: translate(-50%, calc(-50% + 48px + (1 - var(--p, 0)) * 44vh)) rotateX(calc((1 - var(--p, 0)) * 10deg)) scale(calc(.86 + var(--p, 0) * .1)); }
-.window { position: relative; border-radius: 16px; overflow: hidden; background: var(--s1); box-shadow: 0 0 0 1px var(--line-2), 0 64px 128px rgb(0 0 0 / .8); opacity: 0; animation: lift 1.4s var(--ease) .5s forwards; }
-@keyframes lift { from { opacity: 0; transform: translateY(96px); } to { opacity: 1; transform: none; } }
-.window .bar { height: 32px; display: flex; align-items: center; gap: 8px; padding: 0 12px; background: var(--s2); }
-.window .bar i { width: 12px; height: 12px; border-radius: 9999px; background: var(--s4); }
-.window img { display: block; width: 100%; }
-/* A light sweeps across the glass as it rises. */
-.window::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(105deg, transparent 35%, rgb(255 255 255 / .09) 48%, transparent 60%); transform: translateX(calc(-100% + var(--p, 0) * 200%)); }
+/* Orbit to app: the Sirus icon with the agents circling it; scrolling opens the icon into the
+   app window while the agents fly into a row above it. JS sets the size and place per frame. */
+.core { position: absolute; left: 50%; z-index: 2; translate: -50% -50%; overflow: hidden; box-shadow: 0 0 0 1px var(--line-2), 0 48px 120px rgb(0 0 0 / .9), 0 0 120px rgb(255 255 255 / .06);
+  transform: rotateX(calc(var(--my, 0) * -6deg)) rotateY(calc(var(--mx, 0) * 8deg)); transition: transform .6s var(--ease); opacity: 0; animation: lift 1.4s var(--ease) .5s forwards; }
+@keyframes lift { from { opacity: 0; transform: translateY(64px); } to { opacity: 1; } }
+.core > * { position: absolute; inset: 0; }
+.core .icon { width: 100%; height: 100%; display: block; }
+.core .app { background: var(--s1); display: flex; flex-direction: column; }
+.core .app .bar { flex: none; height: 28px; display: flex; align-items: center; gap: 7px; padding: 0 12px; background: var(--s2); }
+.core .app .bar i { width: 11px; height: 11px; border-radius: 9999px; background: var(--s4); }
+.core .app img { flex: 1; min-height: 0; width: 100%; object-fit: cover; object-position: top; display: block; }
+.fly { position: absolute; left: 50%; z-index: 3; width: 0; height: 0; }
+.agent { position: absolute; width: 56px; height: 56px; margin: -28px; border-radius: 16px; display: grid; place-items: center; background: rgb(24 24 24 / .92); backdrop-filter: blur(12px); box-shadow: 0 0 0 1px var(--line-2), 0 16px 32px rgb(0 0 0 / .6); opacity: 0; animation: pop .9s var(--ease) forwards; }
+.agent img { width: 26px; height: 26px; object-fit: contain; }
+@keyframes pop { from { opacity: 0; scale: .6; } to { opacity: 1; scale: 1; } }
 
 /* Agents */
 .agents { max-width: 1120px; margin: 0 auto; padding: 96px 24px 0; text-align: center; }
@@ -86,7 +92,7 @@ h1 .w { display: inline-block; opacity: 0; transform: translateY(64px); filter: 
 .agents ul { list-style: none; margin: 24px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
 .agents li { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 9999px; background: var(--s1); box-shadow: inset 0 0 0 1px var(--line); font-size: 16px; color: var(--mute); transition: color .7s var(--ease), transform .7s var(--ease), background .7s var(--ease); }
 .agents li:hover { color: var(--fg); background: var(--s2); transform: translateY(-2px); }
-.agents li i { width: 8px; height: 8px; border-radius: 9999px; display: block; }
+.agents li img { width: 20px; height: 20px; object-fit: contain; display: block; }
 
 /* Sections */
 .section { max-width: 1120px; margin: 0 auto; padding: 128px 24px 0; }
@@ -207,7 +213,7 @@ footer { margin-top: 128px; box-shadow: inset 0 1px 0 var(--line); }
   h1 { font-size: 48px; } .section-head h2 { font-size: 36px; line-height: 40px; } .tagline p { font-size: 36px; line-height: 40px; } .final h2 { font-size: 48px; }
   .bento, .steps, .phone-grid, .tabs { grid-template-columns: 1fr; } .card, .card.w3, .card.w4 { grid-column: auto; } .phones { height: 560px; }
 }
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } h1 .w, .fade-in, .window, .reveal { opacity: 1; transform: none; filter: none; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } h1 .w, .fade-in, .core, .agent, .reveal { opacity: 1; transform: none; filter: none; } }
 </style>
 </head>
 <body>
@@ -230,15 +236,14 @@ footer { margin-top: 128px; box-shadow: inset 0 1px 0 var(--line); }
         <div class="cta fade-in" style="animation-delay:.85s"><button class="btn primary" data-download><i class="ph-fill ph-apple-logo"></i>Download for macOS</button><a class="btn secondary" href="https://github.com/viannaanalyst/sirus-code"><i class="ph ph-github-logo"></i>View the source</a></div>
         <div class="proof fade-in" style="animation-delay:1s"><span><i class="ph ph-cpu"></i>7 agent CLIs</span><span><i class="ph ph-lock-simple"></i>No account, no cloud</span><span><i class="ph ph-device-mobile"></i>iPhone app included</span></div>
       </div>
-      <div class="scene" id="scene">
-        <div class="window"><div class="bar"><i></i><i></i><i></i></div><img src="app.png" alt="Sirus Code with a Claude session adding a dark mode toggle, its four changed files open beside it"></div>
-      </div>
+      <div class="core" id="core"><img class="icon" src="icon.png" alt=""><div class="app" aria-hidden="true"><div class="bar"><i></i><i></i><i></i></div><img src="app.png" alt="Sirus Code with a Claude session adding a dark mode toggle, its four changed files open beside it"></div></div>
+      <div class="fly" id="fly" aria-hidden="true"></div>
     </div>
   </div>
 
   <section class="agents" aria-label="Supported agents">
     <p class="eyebrow reveal">WORKS WITH THE AGENT CLIS YOU ALREADY USE</p>
-    <ul class="reveal"><li><i style="background:#D97757"></i>Claude Code</li><li><i style="background:#E5E5E5"></i>Codex</li><li><i style="background:#9AA0FF"></i>OpenCode</li><li><i style="background:#6FB5FF"></i>Cursor</li><li><i style="background:#A3A3A3"></i>Grok</li><li><i style="background:#F5C451"></i>Devin</li><li><i style="background:#6BD69A"></i>Hermes</li></ul>
+    <ul class="reveal"><li><img src="agents/claude.svg" alt="">Claude Code</li><li><img src="agents/codex.svg" alt="">Codex</li><li><img src="agents/opencode.svg" alt="">OpenCode</li><li><img src="agents/cursor.svg" alt="">Cursor</li><li><img src="agents/grok.svg" alt="">Grok</li><li><img src="agents/devin.svg" alt="">Devin</li><li><img src="agents/hermes.svg" alt="">Hermes</li></ul>
   </section>
 
   <section class="section" id="features">
@@ -345,6 +350,39 @@ const update = () => {
 };
 addEventListener("scroll", () => { if (!ticking) { ticking = true; requestAnimationFrame(update); } }, { passive: true });
 update();
+
+// Orbit to app. Before scrolling, the agents circle the icon under the buttons; as the hero pins,
+// the icon grows into the app window at the middle of the screen and the agents line up above it.
+const core = document.getElementById("core"), fly = document.getElementById("fly"), copy = document.querySelector(".hero-copy");
+const AGENTS = ["claude", "codex", "opencode", "cursor", "grok", "devin", "hermes"];
+const tiles = AGENTS.map((name, i) => { const a = document.createElement("div"); a.className = "agent"; a.style.animationDelay = `${.7 + i * .06}s`; a.innerHTML = `<img src="agents/${name}.svg" alt="">`; fly.append(a); return a; });
+const app = core.querySelector(".app"), icon = core.querySelector(".icon");
+const ease = (t) => 1 - Math.pow(1 - t, 3);
+let spin = 0, last = performance.now();
+const hero = (now) => {
+  spin += (now - last) * .012; last = now;
+  const p = progress(track), k = ease(Math.min(1, p * 1.25));
+  // Bigger screens get a bigger icon and orbit; the open window leaves room for the nav and the row of agents above it.
+  const sc = Math.min(1.45, Math.max(1, innerHeight / 900)), base = 132 * sc;
+  const startY = Math.min(copy.offsetHeight + 90 + base / 2, innerHeight - base);
+  const fw = Math.min(1100, innerWidth * .86), fh = Math.min(fw * .625 + 28, innerHeight - 260), fwFit = Math.min(fw, (fh - 28) / .625);
+  const endY = Math.max(innerHeight / 2 + 50, 96 + 56 + 32 + fh / 2);
+  const w = base + (fwFit - base) * k, h = base + (fh - base) * k, cy = startY + (endY - startY) * k;
+  Object.assign(core.style, { width: `${w}px`, height: `${h}px`, top: `${cy}px`, borderRadius: `${32 - 16 * k}px` });
+  icon.style.opacity = String(Math.max(0, 1 - k * 3)); app.style.opacity = String(Math.min(1, Math.max(0, k * 3 - .6)));
+  fly.style.top = `${cy}px`;
+  const rowY = -h / 2 - 44;
+  tiles.forEach((a, i) => {
+    const ang = ((i / tiles.length) * 360 + spin) * Math.PI / 180;
+    const ox = Math.cos(ang) * 200 * sc, oy = Math.sin(ang) * 72 * sc, oz = Math.sin(ang);
+    const tx = (i - (tiles.length - 1) / 2) * 68, ty = rowY;
+    a.style.transform = `translate(${ox + (tx - ox) * k}px, ${oy + (ty - oy) * k}px) scale(${(1 + oz * .12) * (1 - k * .1)})`;
+    a.style.zIndex = oz > 0 && k < .5 ? "3" : "1"; a.style.filter = k < .5 ? `brightness(${.75 + (oz + 1) * .15})` : "none";
+  });
+  requestAnimationFrame(hero);
+};
+requestAnimationFrame(hero);
+document.querySelector(".hero-stage").addEventListener("pointermove", (e) => { const st = e.currentTarget; st.style.setProperty("--mx", (e.clientX / innerWidth * 2 - 1).toFixed(3)); st.style.setProperty("--my", (e.clientY / innerHeight * 2 - 1).toFixed(3)); });
 
 // Sections fade up as they enter.
 const io = new IntersectionObserver((entries) => entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }), { threshold: .2 });
