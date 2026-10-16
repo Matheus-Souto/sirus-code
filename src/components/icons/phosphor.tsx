@@ -143,6 +143,7 @@ import {
   PencilSimple as PhPencilSimple,
   Play as PhPlay,
   Plus as PhPlus,
+  QrCode as PhQrCode,
   PlugsConnected as PhPlugsConnected,
   Prohibit as PhProhibit,
   PushPin as PhPushPin,
@@ -356,6 +357,7 @@ export const PinOff = adapt(PhPushPinSlash, "PinOff");
 export const Pipette = adapt(PhEyedropper, "Pipette");
 export const Play = adapt(PhPlay, "Play");
 export const Plus = adapt(PhPlus, "Plus");
+export const QrCode = adapt(PhQrCode, "QrCode");
 export const Plug = adapt(PhPlugsConnected, "Plug");
 export const Puzzle = adapt(PhPuzzlePiece, "Puzzle");
 export const Quote = adapt(PhQuotes, "Quote");

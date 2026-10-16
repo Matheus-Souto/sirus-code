@@ -31,6 +31,8 @@ export interface DialogContentProps extends ComponentPropsWithoutRef<typeof Dial
   density?: "default" | "compact";
   /** Confirmations: no divider under the header and a compact action row. */
   variant?: "default" | "confirm" | "plain";
+  /** A decorative band above the header (an illustration of what the dialog does). */
+  hero?: ReactNode;
 }
 
 const fade: Transition = { duration: motionTokens.duration.instant };
@@ -46,7 +48,7 @@ function SwapText({ text }: { text: string }) {
   </AnimatePresence>;
 }
 
-export function DialogContent({ title, description, children, density = "default", variant = "default", className, onPointerDownOutside, ...props }: DialogContentProps) {
+export function DialogContent({ title, description, children, density = "default", variant = "default", hero, className, onPointerDownOutside, ...props }: DialogContentProps) {
   const t = useTranslation();
   const open = useContext(OpenContext);
   const reduced = useReducedMotion();
@@ -60,6 +62,7 @@ export function DialogContent({ title, description, children, density = "default
   };
   const classes = [styles.content, density === "compact" && styles.compact, variant === "confirm" && styles.confirm, variant === "plain" && styles.plain, className].filter(Boolean).join(" ");
   const inner = <>
+    {hero}
     <div className={styles.header}><div><DialogPrimitive.Title className={styles.title}><SwapText text={title}/></DialogPrimitive.Title>{description ? <DialogPrimitive.Description className={styles.description}><SwapText text={description}/></DialogPrimitive.Description> : null}</div><DialogPrimitive.Close className={styles.close} aria-label={t("Close dialog")}><X width={18} height={18} aria-hidden="true"/></DialogPrimitive.Close></div>
     <div className={styles.body}>{children}</div>
   </>;

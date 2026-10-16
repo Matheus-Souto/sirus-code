@@ -57,3 +57,8 @@ The UI already talks to the Mac only through `Transport` (`src/client/transport.
 ## Addendum (2026-10-16): the pairing QR code
 
 The pairing link is drawn in the page (`PairingQrCode`, `uqr`, medium error correction): round modules, rounded finder squares and the Sirus mark in a cleared square at the centre, dark on a white tile whatever the theme, since not every phone camera reads an inverted code. Modules are dots of 0.96 module and the code is 192 px, sizes at which a software decoder read every case checked (four addresses, 1x and 2x screens). The native `qr_svg` stays for the host's command line.
+
+## Addendum (2026-10-16): the "Connect a device" dialog and device names
+
+- The pairing code moved from the Connections page into a dialog. An illustration band shows what happens on the other device; a switch separates the iPhone app (QR with the Sirus mark, the six digits beside it, three steps and four QR inks, all checked with a QR reader down to 120 px) from a browser (the address to copy and the code in large digits). A live code, the device that just joined and an expired code each have their own view; a new code takes the old one off screen before it is asked for, so a failure never shows a dead code.
+- A device that joins while the dialog is open is named there, with suggestions. Paired devices can also be renamed in place in the device list (`remote_action` `rename`: one trimmed line, at most 60 characters).
