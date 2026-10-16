@@ -130,3 +130,7 @@ npm run publish:update               # JavaScript-only changes reach the install
 ```
 
 `mobile/.env.local` (untracked) holds `SIRUS_UPDATE_URL`, the Mac's `https://….ts.net/api/app-update/manifest`. Bump `RUNTIME_VERSION` in `mobile/app.config.ts` when native code changes. The LaunchAgent `com.siruscode.renew-iphone` runs `mobile/scripts/renew-iphone.sh` to renew the 7-day signature over Wi-Fi. The first time, enable Developer Mode on the iPhone and trust the developer under Settings → General → VPN & Device Management.
+
+## Releases
+
+A release `.dmg` is built with `npx tauri build --bundles dmg --config '{"bundle":{"macOS":{"signingIdentity":"-"}}}'` (ad-hoc signed, not notarized; the first open goes through System Settings → Privacy & Security → Open Anyway). The DMG window uses `src-tauri/icons/dmg-background.tiff` (660×400 plus @2x). Upload it to a GitHub release as `SirusCode-arm64.dmg`: the website's download button points at `releases/latest/download/SirusCode-arm64.dmg`. The website itself is the static `website/` folder, served by Cloudflare Pages at siruscode.com.

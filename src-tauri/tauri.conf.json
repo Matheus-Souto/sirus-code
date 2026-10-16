@@ -56,7 +56,13 @@
       "icons/icon.ico"
     ],
     "macOS": {
-      "entitlements": "Entitlements.plist"
+      "entitlements": "Entitlements.plist",
+      "dmg": {
+        "background": "icons/dmg-background.tiff",
+        "windowSize": { "width": 660, "height": 400 },
+        "appPosition": { "x": 180, "y": 214 },
+        "applicationFolderPosition": { "x": 480, "y": 214 }
+      }
     }
   }
 }
