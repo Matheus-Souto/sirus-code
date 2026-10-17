@@ -409,7 +409,7 @@ async fn handle_connection(stream: tokio::net::UnixStream, app: AppHandle) {
     }
 }
 
-#[cfg(not(all(target_os = "macos", feature = "desktop")))]
+#[cfg(all(unix, not(all(target_os = "macos", feature = "desktop"))))]
 async fn handle_connection(_stream: tokio::net::UnixStream, _app: AppHandle) {}
 
 // ---------- Tool execution ----------
