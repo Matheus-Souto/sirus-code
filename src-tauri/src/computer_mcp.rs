@@ -253,9 +253,10 @@ pub struct Endpoint {
     pub token: String,
 }
 
-/// The computer server is offered to a turn only while the Settings switch is on.
+/// The computer server is offered to a turn only while the Settings switch is on,
+/// and only in the macOS app, the one build whose bridge server listens.
 pub fn endpoint(session_id: &str) -> Option<Endpoint> {
-    if !enabled() {
+    if !cfg!(all(target_os = "macos", feature = "desktop")) || !enabled() {
         return None;
     }
     let (_, socket) = APP.get()?;
