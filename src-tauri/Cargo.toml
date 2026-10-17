@@ -5,7 +5,7 @@ description = "Desktop workspace for AI-assisted software development"
 authors = ["Sirus Code"]
 license = "MIT"
 edition = "2021"
-# `tauri dev` calls `cargo run` without `--bin`; `sirus-host` is always built by name.
+# `tauri dev` calls `cargo run` without `--bin`; run the headless host with `--bin sirus-host`.
 default-run = "sirus-code"
 
 [lib]

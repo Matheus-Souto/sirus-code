@@ -409,9 +409,6 @@ async fn handle_connection(stream: tokio::net::UnixStream, app: AppHandle) {
     }
 }
 
-#[cfg(all(unix, not(all(target_os = "macos", feature = "desktop"))))]
-async fn handle_connection(_stream: tokio::net::UnixStream, _app: AppHandle) {}
-
 // ---------- Tool execution ----------
 
 fn arg_text(args: &Value, key: &str, limit: usize) -> Option<String> {
