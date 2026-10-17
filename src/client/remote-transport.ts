@@ -46,6 +46,22 @@ const MAX_DELAY = 30_000;
 
 const UNREACHABLE = "Cannot reach the Mac. Check that Sirus is open and Tailscale is on.";
 const LOST = "The connection to the Mac was lost.";
+const TIMED_OUT = "The Mac did not answer in time.";
+
+/** How long a command may wait for its result before it fails (a silent socket would hang it forever). */
+const INVOKE_TIMEOUT = 2 * 60_000;
+/** Commands that legitimately run long on the Mac: Setup scripts, network Git, installs, logins. */
+const LONG_INVOKE_TIMEOUT = 15 * 60_000;
+const LONG_COMMANDS = new Set([
+  "send_prompt", "retry_last_turn", "clone_project", "create_project", "update_providers",
+  "login_provider_account", "git_push", "git_workspace_action", "pull_request_action",
+  "project_scripts_action", "worktree_cleanup_action", "device_action", "connector_action",
+  "prepare_session_move", "import_session", "commit_title_action",
+]);
+
+export function invokeTimeout(command: string): number {
+  return LONG_COMMANDS.has(command) ? LONG_INVOKE_TIMEOUT : INVOKE_TIMEOUT;
+}
 
 /** The transport's own "Mac out of reach" failures, which the phone shows as reconnecting instead. */
 export function isRemoteConnectionError(message: string): boolean {
@@ -84,8 +100,15 @@ export class RemoteTransport implements Transport {
     if (this.socket?.readyState !== OPEN) throw new Error(LOST);
     const id = this.nextId++;
     const reply = new Promise<unknown>((resolve, reject) => this.pending.set(id, { resolve, reject }));
+    const timer = setTimeout(() => {
+      const waiting = this.pending.get(id);
+      if (!waiting) return;
+      this.pending.delete(id);
+      waiting.reject(new Error(TIMED_OUT));
+    }, invokeTimeout(command));
+    (timer as { unref?: () => void }).unref?.();
     this.socket!.send(JSON.stringify({ type: "invoke", id, cmd: command, args: args ?? {} }));
-    return reply as Promise<T>;
+    return (reply as Promise<T>).finally(() => clearTimeout(timer));
   }
 
   async listen<T>(event: string, handler: (payload: T) => void): Promise<Unlisten> {

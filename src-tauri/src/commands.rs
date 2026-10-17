@@ -170,8 +170,16 @@ fn watch_start(app: AppHandle, state: Arc<AppState>, snapshot: Session) {
         let changed = {
             let mut data = state.data.lock();
             match find_session_mut(&mut data, &snapshot.id) {
-                Ok(session) if same_run(session, &snapshot) && session.status.is_active() => {
+                // `stop_one` has just marked the turn Stopped; it failed to start instead.
+                Ok(session)
+                    if same_run(session, &snapshot)
+                        && matches!(
+                            session.status,
+                            SessionStatus::Stopped | SessionStatus::Starting
+                        ) =>
+                {
                     session.status = SessionStatus::Failed;
+                    session.stopped_by_user_at = None;
                     session.last_error = Some(START_TIMEOUT_ERROR.into());
                     crate::activity::sync(session);
                     if let Some(last) = session.messages.last_mut() {
@@ -1991,6 +1999,8 @@ pub async fn send_prompt(
     // A new worktree's Setup script (and any script still running) goes first;
     // its failure is shown but never blocks the turn (ADR-078).
     crate::project_scripts::before_turn(&app, state.inner(), &session_snapshot.id).await;
+    // Armed while the turn is still Starting: capture, spawn and the provider handshake.
+    watch_start(app.clone(), state.inner().clone(), session_snapshot.clone());
     let review_root = PathBuf::from(&cwd);
     let review_session = session_snapshot.clone();
     let capture = native_task(move || {
@@ -2107,7 +2117,6 @@ pub async fn send_prompt(
                 state.inner().clone(),
                 session_snapshot.id.clone(),
             );
-            watch_start(app, state.inner().clone(), session_snapshot.clone());
             // A disk failure must not orphan an already-spawned process.
             state.persist()?;
             let data = state.data.lock();
@@ -2165,11 +2174,11 @@ pub async fn respond_agent_request(
         let mut data = state.data.lock();
         state.ensure_running()?;
         let session = find_session_mut(&mut data, &request.session_id)?;
-        if !matches!(
+        let native = matches!(
             session.agent,
             AgentProviderId::Codex | AgentProviderId::Claude | AgentProviderId::OpenCode
-        ) || !session.status.is_active()
-        {
+        ) || crate::acp_cli::handles(&session.agent);
+        if !native || !session.status.is_active() {
             return Err(Error::agent("No live native request for this session"));
         }
         let index = session

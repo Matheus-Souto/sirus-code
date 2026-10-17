@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { browserAddressDisplayValue, normalizeBrowserAddressInput } from "../src/lib/browser-url.ts";
+import { browserAddressDisplayValue, normalizeBrowserAddressInput, promptWantsBrowserCapture } from "../src/lib/browser-url.ts";
 
 test("address input keeps explicit http(s) URLs and blank documents", () => {
   assert.equal(normalizeBrowserAddressInput("https://example.com/a?b=1#c"), "https://example.com/a?b=1#c");
@@ -26,4 +26,13 @@ test("address input turns words and unsafe schemes into a search", () => {
 test("blank documents display as an empty address bar", () => {
   assert.equal(browserAddressDisplayValue("about:blank"), "");
   assert.equal(browserAddressDisplayValue("https://example.com"), "https://example.com");
+});
+
+test("only explicit mentions of the open page ask for a browser screenshot", () => {
+  for (const prompt of ["Check the browser page", "o que tem no navegador?", "take a screenshot", "tira um print da tela", "fix the layout on this page", "veja a página e corrija", "o botão nesta página está torto", "qual o título desta página?", "o que tem dessa página", "captura de tela do login"]) {
+    assert.equal(promptWantsBrowserCapture(prompt), true, prompt);
+  }
+  for (const prompt of ["add pagination to the users page component", "remove the print statement", "use print() to debug", "crie uma página de login", "imprimir o relatório"]) {
+    assert.equal(promptWantsBrowserCapture(prompt), false, prompt);
+  }
 });

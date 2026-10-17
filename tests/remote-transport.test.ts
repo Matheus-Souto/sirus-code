@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { RemoteTransport, reconnectDelay, type RemoteConnection, type RemoteSocket } from "../src/client/remote-transport.ts";
+import { invokeTimeout, RemoteTransport, reconnectDelay, type RemoteConnection, type RemoteSocket } from "../src/client/remote-transport.ts";
 import { deviceName, normalizePairingCode, pairingCode, redeemPairing, socketUrl } from "../src/client/remote-pairing.ts";
 
 class FakeSocket implements RemoteSocket {
@@ -134,4 +134,16 @@ test("Settings → Connections counts down the code and spots the new device", a
   assert.equal(newlyPaired([mac], [mac, phone]), phone);
   assert.equal(newlyPaired([mac, phone], [mac]), null);
   assert.ok(svgDataUrl("<svg a=\"1\"/>").startsWith("data:image/svg+xml;charset=utf-8,%3Csvg"));
+});
+
+test("a command the Mac never answers fails after its time limit", async (context) => {
+  context.mock.timers.enable({ apis: ["setTimeout"] });
+  const { transport, sockets } = setup();
+  const reply = transport.invoke("load_state");
+  sockets[0].open();
+  sockets[0].receive({ type: "ready" });
+  await new Promise((resolve) => setImmediate(resolve));
+  context.mock.timers.tick(invokeTimeout("load_state"));
+  await assert.rejects(reply, /did not answer in time/);
+  assert.ok(invokeTimeout("send_prompt") > invokeTimeout("load_state"));
 });

@@ -15,3 +15,12 @@ export function normalizeBrowserAddressInput(input: string): string | null {
 export function browserAddressDisplayValue(url: string): string {
   return url === "about:blank" ? "" : url;
 }
+
+/**
+ * Whether a prompt asks about the page open in the session's browser, so a screenshot of it
+ * goes with the turn. Only explicit mentions count: "page" or "print" alone are everyday words
+ * in code ("page component", "print statement").
+ */
+export function promptWantsBrowserCapture(prompt: string): boolean {
+  return /\b(browser|navegador|screenshot)\b|captura de tela|\btir[ae] (um )?print\b|\bprint d[aeo] (tela|p[áa]gina|site)|\b(this|current) (web )?page\b|\b[nd]?(ess?a|esta) p[áa]gina|\bveja (o|a) (site|p[áa]gina)/i.test(prompt);
+}

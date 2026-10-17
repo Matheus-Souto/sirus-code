@@ -1,6 +1,7 @@
 import { hostFeatures } from "@/lib/phone-host";
 import { appendDiffComment } from "@/lib/diff-comment";
 import { startRecording, stopRecording } from "@/lib/browser-recordings";
+import { promptWantsBrowserCapture } from "@/lib/browser-url";
 import { activeSession, lastAssistantId, observedPromptAdmission, observedQueuedAdmission, PROMPT_QUEUE_LIMIT, queueBinding, sameQueueBinding, validQueuedPrompt, type PromptQueue } from "@/lib/prompt-queue";
 import { acknowledgeEditorSave, editorKey } from "@/lib/editor-state";
 import { SIDEBAR_MIN_WIDTH, SIDEBAR_RAIL_WIDTH } from "@/lib/sidebar-panels";
@@ -479,9 +480,10 @@ function persistDraftChanges(before: Record<string, string>, after: Record<strin
 /** Minimum chat width kept while the dock grows. */
 const MIN_CHAT_WIDTH = 440;
 
-function clampDockWidth(width: number, state: Pick<AppStore, "sidebarCollapsed" | "sidebarWidth">): number {
+function clampDockWidth(width: number, state: Pick<AppStore, "sidebarCollapsed">): number {
   const viewport = typeof window === "undefined" ? 1440 : window.innerWidth;
-  const sidebar = state.sidebarCollapsed ? SIDEBAR_RAIL_WIDTH : state.sidebarWidth;
+  // The sidebar is the icon rail only (ADR-092); collapsing hides it.
+  const sidebar = state.sidebarCollapsed ? 0 : SIDEBAR_RAIL_WIDTH;
   const max = Math.max(320, viewport - sidebar - MIN_CHAT_WIDTH);
   return Math.min(max, Math.max(280, width));
 }
@@ -2341,7 +2343,7 @@ useAppStore.subscribe((state) => {
 
 /** Prompt-triggered browser context: a screenshot of the active tab attaches to the turn. */
 async function captureBrowserAttachment(prompt: string, sessionId: string | null) {
-  if (!sessionId || !/(browser|navegador|p[áa]gina|page|screenshot|captura|print|veja (o|a) (site|p[áa]gina))/i.test(prompt)) return null;
+  if (!sessionId || !promptWantsBrowserCapture(prompt)) return null;
   const browser = useAppStore.getState().browserBySession[sessionId];
   const active = browser?.tabs.find((tab) => tab.id === browser.activeTabId);
   if (!active?.url || !/^https?:\/\//i.test(active.url)) return null;
@@ -2606,6 +2608,28 @@ const outputBatch = (() => {
     cancel() { cancelScheduled?.(); cancelScheduled = null; pending = []; },
   };
 })();
+
+/**
+ * Clears what belongs to the computer being left before the next one bootstraps (ADR-133):
+ * queues, tabs, dock panes, terminals and history name its sessions, and usage, models and
+ * inbox data came from its CLIs. Window-bound state (computer use) stays with this Mac.
+ */
+export function resetComputerScope() {
+  useAppStore.setState({
+    editors: null, editorIcons: {},
+    promptQueues: {}, composerContexts: {}, temporarySessionIds: [],
+    usageResumeArmed: {}, usageLimitDismissed: {}, usageLimitResets: {},
+    usageByProvider: {}, usageLoading: {}, modelsByProvider: {},
+    dockPanes: [], dockActivePaneId: null, dockOpen: false, dockMaximized: false,
+    terminalWorkspacesBySession: {}, runningTerminals: {}, splitLayout: initialSplit(),
+    openTabsByProject: {}, lastActiveTabByProject: {}, draftTabByProject: {}, unseenSessionIds: [],
+    closedItems: [], navHistory: [], navIndex: -1, messageJump: null, transcriptSearch: null,
+    tasks: null, githubInbox: {}, prWatches: [], ciAutoFix: [], secrets: null,
+  });
+  // Read once by `bindRealtime`; the transport already talks to the next computer.
+  void useAppStore.getState().ciAutofixAction({ type: "status" });
+  void useAppStore.getState().prWatchAction({ type: "status" });
+}
 
 export async function bindRealtime() {
   const unlisteners: (() => void)[] = [];

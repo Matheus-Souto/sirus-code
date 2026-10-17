@@ -1604,6 +1604,9 @@ fn allowed_command(command: &str) -> bool {
             .chars()
             .all(|character| character.is_ascii_alphanumeric() || character == '_')
         && !DENIED.contains(&command)
+        // The embedded browser lives in this Mac's window: a paired desktop runs its own
+        // (`lib/computers.ts` `runsOnThisMac`) and the phone has none.
+        && !command.starts_with("browser_")
 }
 
 enum Reply {
@@ -2106,6 +2109,8 @@ mod tests {
             "remote_pair",
             "pick_folder",
             "computer_action",
+            "browser_open",
+            "browser_navigate",
             "plugin:opener|open_url",
             "",
             "a b",

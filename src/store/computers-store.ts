@@ -31,7 +31,7 @@ import {
 } from "@/lib/environments";
 import { formatUnknownError } from "@/lib/format-error";
 import { hostKind } from "@/lib/phone-host";
-import { useAppStore } from "./app-store";
+import { resetComputerScope, useAppStore } from "./app-store";
 
 /**
  * The desktop app's computers (ADR-133): this Mac plus the Sirus hosts paired from Settings →
@@ -191,8 +191,8 @@ export const useComputers = create<ComputersState>()((set, get) => {
       if (!switchEnvironment(id)) return false;
       set({ activeId: id, switchingTo: id });
       watch(previous);
-      // Per-computer caches the bootstrap does not reset: editor apps are detected again there.
-      useAppStore.setState({ editors: null, editorIcons: {} });
+      // Per-computer state the bootstrap does not reset: editor apps are detected again there.
+      resetComputerScope();
       try {
         await useAppStore.getState().bootstrap();
       } finally {
